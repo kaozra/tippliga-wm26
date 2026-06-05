@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Crosshair, Star, Flame, Skull, PenLine } from 'lucide-react'
+import { Crosshair, Star, Flame, Skull, PenLine, Sun, Moon } from 'lucide-react'
 import { initializeApp } from 'firebase/app'
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -1590,6 +1590,8 @@ function LoginForm({onSwitch}) {
 export default function App() {
   const [authUser,setAuthUser]=useState(undefined), [profile,setProfile]=useState(null), [results,setResults]=useState({})
   const [tab,setTab]=useState(()=>localStorage.getItem('activeTab')||'tippen'), [authMode,setAuthMode]=useState('login')
+  const [theme,setTheme]=useState(()=>localStorage.getItem('theme')||'dark')
+  useEffect(()=>{ document.documentElement.setAttribute('data-theme',theme); localStorage.setItem('theme',theme) },[theme])
   useEffect(()=>{ localStorage.setItem('activeTab',tab) },[tab])
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async u=>{
@@ -1632,6 +1634,9 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-title">TippLiga WM26</div>
+        <button className="theme-btn" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} title="Theme wechseln">
+          {theme==='dark'?<Sun size={18} strokeWidth={1.5}/>:<Moon size={18} strokeWidth={1.5}/>}
+        </button>
         <button className="logout-btn" onClick={()=>signOut(auth)} title="Abmelden">✕</button>
       </header>
       <div className="app-content">
