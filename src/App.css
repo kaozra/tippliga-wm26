@@ -90,6 +90,12 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .pts-0{color:var(--red)}
 .no-tip-label{font-size:10px;color:var(--muted)}
 .saved-tick{font-size:10px;color:var(--green)}
+.pen-row{display:flex;align-items:center;gap:5px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+.pen-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;width:100%;text-align:center;margin-bottom:2px}
+.pen-btn{font-size:10px;padding:3px 8px;background:var(--dark-3);border:1px solid var(--dark-4);border-radius:12px;color:var(--text-dim);cursor:pointer;transition:all .15s;white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis}
+.pen-btn.active{background:var(--gold);color:#000;border-color:var(--gold);font-weight:700}
+.pen-locked{font-size:10px;color:var(--muted);text-align:center;margin-top:4px}
+.pen-locked.result{color:var(--gold)}
 .ko-team .team-cell-name{color:var(--text-dim);font-size:12px;font-weight:400;max-width:120px}
 .ko-section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--text-dim);letter-spacing:1px;margin:16px 0 10px;padding:6px 12px;background:var(--dark-3);border-radius:var(--radius-sm);display:inline-block}
 

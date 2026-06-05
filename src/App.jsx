@@ -338,12 +338,22 @@ function parseMatchDate(m) {
   const [d,mo,y] = m.date.split('.'), [h,min] = m.time.split(':')
   return new Date(+y,+mo-1,+d,+h,+min)
 }
+const KO_GROUPS = ['R32','QF','SF','P3','FIN']
+
 function calcPoints(tip, result) {
   if (!result||result.homeGoals==null||result.awayGoals==null) return null
   const th=tip.homeGoals,ta=tip.awayGoals,rh=result.homeGoals,ra=result.awayGoals
-  if(th===rh&&ta===ra) return 3
+  const exact=th===rh&&ta===ra
   const tt=Math.sign(th-ta),rt=Math.sign(rh-ra)
-  if(tt===rt) return (th===rh||ta===ra)?2:1
+  const correctTendency=tt===rt
+  if(result.penaltyWinner){
+    if(!correctTendency) return 0
+    const correctPen=tip.penaltyWinner===result.penaltyWinner
+    if(exact) return correctPen?3:2
+    return correctPen?2:1
+  }
+  if(exact) return 3
+  if(correctTendency) return (th===rh||ta===ra)?2:1
   return 0
 }
 function ptsLabel(pts) {
@@ -502,13 +512,18 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false}
   const kickoff = parseMatchDate(match)
   const locked = now >= kickoff
   const isKo = !TEAMS[match.home]
+  const isKoGroup = KO_GROUPS.includes(match.group)
   const [h, setH] = useState(tip?.homeGoals??'')
   const [a, setA] = useState(tip?.awayGoals??'')
+  const [penWinner, setPenWinner] = useState(tip?.penaltyWinner||null)
   const pts = (result&&tip) ? calcPoints(tip,result) : null
   const venue = VENUES[match.id]
+  const tipIsDraw = h!==''&&a!==''&&+h===+a
+  const resultIsDraw = result&&result.homeGoals!=null&&result.homeGoals===result.awayGoals
 
-  useEffect(()=>{setH(tip?.homeGoals??''); setA(tip?.awayGoals??'')},[tip])
-  function handleBlur(){if(h!==''&&a!=='') onSave(match.id,h,a)}
+  useEffect(()=>{setH(tip?.homeGoals??''); setA(tip?.awayGoals??''); setPenWinner(tip?.penaltyWinner||null)},[tip])
+  function handleBlur(){if(h!==''&&a!=='') onSave(match.id,h,a,isKoGroup&&+h===+a?penWinner:null)}
+  function handlePen(pw){setPenWinner(pw); onSave(match.id,h,a,pw)}
 
   return (
     <div className={`match-card${result?' has-result':''}${locked?' locked':''}`}>
@@ -532,6 +547,19 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false}
                   <input className="tip-inp" type="number" min="0" max="99" value={a} onChange={e=>setA(e.target.value)} onBlur={handleBlur} placeholder="–" />
                 </div>
           }
+          {isKoGroup&&tipIsDraw&&!locked&&!result && (
+            <div className="pen-row">
+              <span className="pen-label">Elfmeter</span>
+              <button className={`pen-btn${penWinner==='home'?' active':''}`} onClick={()=>handlePen('home')}>{match.home}</button>
+              <button className={`pen-btn${penWinner==='away'?' active':''}`} onClick={()=>handlePen('away')}>{match.away}</button>
+            </div>
+          )}
+          {isKoGroup&&locked&&tip&&tipIsDraw&&tip.penaltyWinner && (
+            <div className="pen-locked">{tip.penaltyWinner==='home'?match.home:match.away} i.E.</div>
+          )}
+          {isKoGroup&&result&&resultIsDraw&&result.penaltyWinner && (
+            <div className="pen-locked result">{result.penaltyWinner==='home'?match.home:match.away} i.E.</div>
+          )}
           {pts!=null && <div className="pts-row">{ptsLabel(pts)}</div>}
           {locked&&pts==null&&!result&&tip==null && <div className="no-tip-label">kein Tipp</div>}
           {!locked&&tip!=null&&h!=='' && <div className="saved-tick">✓</div>}
@@ -677,9 +705,11 @@ function TippenTab({uid, results}) {
     return unsub
   },[uid])
 
-  async function saveTip(matchId, homeGoals, awayGoals) {
+  async function saveTip(matchId, homeGoals, awayGoals, penaltyWinner=null) {
     if(homeGoals===''||awayGoals==='') return
-    await setDoc(doc(db,'tips',`${uid}__${matchId}`),{uid,matchId,homeGoals:+homeGoals,awayGoals:+awayGoals,updatedAt:serverTimestamp()})
+    const data = {uid,matchId,homeGoals:+homeGoals,awayGoals:+awayGoals,updatedAt:serverTimestamp()}
+    if(penaltyWinner) data.penaltyWinner=penaltyWinner
+    await setDoc(doc(db,'tips',`${uid}__${matchId}`),data)
   }
 
   const filterItems = [
@@ -1010,10 +1040,15 @@ function AdminTab({results}) {
 }
 function AdminMatchCard({match, result}) {
   const [h,setH]=useState(result?.homeGoals??''), [a,setA]=useState(result?.awayGoals??''), [saved,setSaved]=useState(false)
-  useEffect(()=>{setH(result?.homeGoals??'');setA(result?.awayGoals??'')},[result])
+  const [penWinner,setPenWinner]=useState(result?.penaltyWinner||null)
+  const isKoGroup=KO_GROUPS.includes(match.group)
+  const isDraw=h!==''&&a!==''&&+h===+a
+  useEffect(()=>{setH(result?.homeGoals??'');setA(result?.awayGoals??'');setPenWinner(result?.penaltyWinner||null)},[result])
   async function save(){
     if(h===''||a==='') return
-    await setDoc(doc(db,'results',match.id),{homeGoals:+h,awayGoals:+a,matchId:match.id,updatedAt:serverTimestamp()})
+    const data={homeGoals:+h,awayGoals:+a,matchId:match.id,updatedAt:serverTimestamp()}
+    if(isKoGroup&&isDraw&&penWinner) data.penaltyWinner=penWinner
+    await setDoc(doc(db,'results',match.id),data)
     setSaved(true); setTimeout(()=>setSaved(false),2000)
   }
   return (
@@ -1025,6 +1060,13 @@ function AdminMatchCard({match, result}) {
         <input className="admin-input" type="number" min="0" max="99" value={a} onChange={e=>setA(e.target.value)} placeholder="–"/>
         {saved?<span className="saved-badge">✓</span>:<button className="save-result-btn" onClick={save}>Speichern</button>}
       </div>
+      {isKoGroup&&isDraw&&(
+        <div className="pen-row" style={{marginTop:8}}>
+          <span className="pen-label">Elfmeter-Gewinner</span>
+          <button className={`pen-btn${penWinner==='home'?' active':''}`} onClick={()=>setPenWinner('home')}>{match.home}</button>
+          <button className={`pen-btn${penWinner==='away'?' active':''}`} onClick={()=>setPenWinner('away')}>{match.away}</button>
+        </div>
+      )}
     </div>
   )
 }
