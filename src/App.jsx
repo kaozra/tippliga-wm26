@@ -515,9 +515,10 @@ function GroupTable({group, results, onTeamClick}) {
 }
 
 // ── MATCH CARD ────────────────────────────────────────────────────────────────
-function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false}) {
+function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false, allTips=[], allUsers=[]}) {
   const kickoff = parseMatchDate(match)
   const locked = now >= kickoff
+  const isLive = now >= kickoff && now.getTime() <= kickoff.getTime() + 110*60*1000
   const isKo = !TEAMS[match.home]
   const isKoGroup = KO_GROUPS.includes(match.group)
   const [h, setH] = useState(tip?.homeGoals??'')
@@ -527,6 +528,7 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false}
   const venue = VENUES[match.id]
   const tipIsDraw = h!==''&&a!==''&&+h===+a
   const resultIsDraw = result&&result.homeGoals!=null&&result.homeGoals===result.awayGoals
+  const showDeadline = !locked && !tip && (kickoff - now) <= 3600000
 
   useEffect(()=>{setH(tip?.homeGoals??''); setA(tip?.awayGoals??''); setPenWinner(tip?.penaltyWinner||null)},[tip])
   function handleBlur(){if(h!==''&&a!=='') onSave(match.id,h,a,isKoGroup&&+h===+a?penWinner:null)}
@@ -535,7 +537,9 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false}
   return (
     <div className={`match-card${result?' has-result':''}${locked?' locked':''}`}>
       <div className="match-meta">
+        {isLive && <span className="live-dot" />}
         {match.date} · {match.time} CEST
+        {showDeadline && <span className="deadline-badge">&lt;1h</span>}
         {venue && !compact && <span className="match-venue"> · 🏟️ {venue.stadium}, {venue.city} ({venue.cap.toLocaleString()})</span>}
       </div>
       <div className="match-row">
@@ -576,6 +580,7 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false}
           : <TeamCell name={match.away} align="right" onClick={()=>onTeamClick&&onTeamClick(match.away)} />
         }
       </div>
+      {locked && <MatchTipsPanel matchId={match.id} allTips={allTips} allUsers={allUsers} result={result} />}
     </div>
   )
 }
@@ -597,7 +602,7 @@ function Countdown({kickoff}) {
 }
 
 // ── NEXT VIEW ─────────────────────────────────────────────────────────────────
-function NextView({tips, results, now, uid, onSave, onTeamClick}) {
+function NextView({tips, results, now, uid, onSave, onTeamClick, allTips=[], allUsers=[]}) {
   const upcoming = MATCHES
     .filter(m=>!['R32','QF','SF','P3','FIN'].includes(m.group))
     .map(m=>({...m,kickoff:parseMatchDate(m)}))
@@ -642,7 +647,7 @@ function NextView({tips, results, now, uid, onSave, onTeamClick}) {
                 {TEAMS[m.away]?.code && <img src={flagUrl(TEAMS[m.away].code)} className="next-flag" alt={m.away} />}
               </div>
             </div>
-            <MatchCard match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact />
+            <MatchCard match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact allTips={allTips} allUsers={allUsers} />
           </div>
         )
       })}
@@ -650,7 +655,7 @@ function NextView({tips, results, now, uid, onSave, onTeamClick}) {
         <div className="upcoming-section">
           <div className="upcoming-title">Weitere bevorstehende Spiele</div>
           {upcoming.slice(concurrent.length, concurrent.length+6).map(m=>(
-            <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact />
+            <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact allTips={allTips} allUsers={allUsers} />
           ))}
         </div>
       )}
@@ -659,7 +664,7 @@ function NextView({tips, results, now, uid, onSave, onTeamClick}) {
 }
 
 // ── GROUP VIEW ────────────────────────────────────────────────────────────────
-function GroupView({group, tips, results, now, onSave, onTeamClick}) {
+function GroupView({group, tips, results, now, onSave, onTeamClick, allTips=[], allUsers=[]}) {
   const groupMatches = MATCHES.filter(m=>m.group===group)
   const upcoming = groupMatches.filter(m=>parseMatchDate(m)>now)
   const played = groupMatches.filter(m=>results[m.id]&&results[m.id].homeGoals!=null)
@@ -669,13 +674,13 @@ function GroupView({group, tips, results, now, onSave, onTeamClick}) {
       {played.length>0 && (
         <div className="matches-section">
           <div className="matches-section-title">Gespielte Spiele</div>
-          {played.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} />)}
+          {played.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} />)}
         </div>
       )}
       {upcoming.length>0 && (
         <div className="matches-section">
           <div className="matches-section-title">Nächste Spiele</div>
-          {upcoming.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} />)}
+          {upcoming.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} />)}
         </div>
       )}
     </div>
@@ -683,13 +688,44 @@ function GroupView({group, tips, results, now, onSave, onTeamClick}) {
 }
 
 // ── KO VIEW ───────────────────────────────────────────────────────────────────
-function KoView({koGroup, tips, results, now, onSave, onTeamClick}) {
+function KoView({koGroup, tips, results, now, onSave, onTeamClick, allTips=[], allUsers=[]}) {
   const koLabels={R32:'⚡ Sechzehntelfinale',QF:'🏆 Viertelfinale',SF:'🔥 Halbfinale',P3:'🥉 Platz 3',FIN:'🥇 Finale'}
   const matches = MATCHES.filter(m=>m.group===koGroup)
   return (
     <div>
       <div className="ko-section-title">{koLabels[koGroup]||koGroup}</div>
-      {matches.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} />)}
+      {matches.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} />)}
+    </div>
+  )
+}
+
+// ── MATCH TIPS PANEL ─────────────────────────────────────────────────────────
+function MatchTipsPanel({matchId, allTips, allUsers, result}) {
+  const [open, setOpen] = useState(false)
+  const matchTips = allTips.filter(t => t.matchId === matchId)
+  if (matchTips.length === 0) return null
+  return (
+    <div className="tips-panel">
+      <button className="tips-toggle" onClick={() => setOpen(v => !v)}>
+        👥 {matchTips.length} Tipp{matchTips.length !== 1 ? 's' : ''}
+        <span className={`tips-chevron${open ? ' open' : ''}`}>›</span>
+      </button>
+      {open && (
+        <div className="tips-list">
+          {matchTips.map(t => {
+            const u = allUsers.find(u => u.uid === t.uid)
+            const pts = result ? calcPoints(t, result) : null
+            return (
+              <div key={t.uid} className="tips-row">
+                <InitialsAvatar name={u?.displayName || '?'} uid={t.uid} size={20} />
+                <span className="tips-name">{u?.displayName || '?'}</span>
+                <span className="tips-score">{t.homeGoals}:{t.awayGoals}</span>
+                {pts != null && <span className={`tips-pts pts-${pts}`}>{pts}P</span>}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -697,20 +733,32 @@ function KoView({koGroup, tips, results, now, onSave, onTeamClick}) {
 // ── TIPPEN TAB ────────────────────────────────────────────────────────────────
 function TippenTab({uid, results}) {
   const [tips, setTips] = useState({})
+  const [allTips, setAllTips] = useState([])
+  const [allUsers, setAllUsers] = useState([])
   const [filter, setFilter] = useState('NEXT')
   const [selectedTeam, setSelectedTeam] = useState(null)
   const sliderRef = useRef(null)
-  const now = new Date()
+  const [now, setNow] = useState(new Date())
+  useEffect(()=>{const id=setInterval(()=>setNow(new Date()),30000);return()=>clearInterval(id)},[])
 
   useEffect(()=>{
     if(!uid) return
     const unsub = onSnapshot(collection(db,'tips'), snap=>{
-      const t={}
-      snap.docs.forEach(d=>{const data=d.data(); if(data.uid===uid) t[data.matchId]=data})
+      const t={}, all=[]
+      snap.docs.forEach(d=>{
+        const data=d.data()
+        all.push(data)
+        if(data.uid===uid) t[data.matchId]=data
+      })
       setTips(t)
+      setAllTips(all)
     })
     return unsub
   },[uid])
+
+  useEffect(()=>{
+    getDocs(collection(db,'users')).then(snap=>setAllUsers(snap.docs.map(d=>({uid:d.id,...d.data()}))))
+  },[])
 
   async function saveTip(matchId, homeGoals, awayGoals, penaltyWinner=null) {
     if(homeGoals===''||awayGoals==='') return
@@ -742,9 +790,9 @@ function TippenTab({uid, results}) {
 
       {/* Content */}
       <div style={{marginTop:12}}>
-        {filter==='NEXT' && <NextView tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} />}
-        {filter in GROUPS && <GroupView group={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} />}
-        {['R32','QF','SF','P3','FIN'].includes(filter) && <KoView koGroup={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} />}
+        {filter==='NEXT' && <NextView tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} />}
+        {filter in GROUPS && <GroupView group={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} />}
+        {['R32','QF','SF','P3','FIN'].includes(filter) && <KoView koGroup={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} />}
       </div>
 
       {selectedTeam && <TeamModal team={selectedTeam} onClose={()=>setSelectedTeam(null)} results={results} />}
