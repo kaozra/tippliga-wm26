@@ -1350,7 +1350,7 @@ export default function App() {
   )
   const isAdmin=authUser.email?.toLowerCase()===ADMIN_EMAIL
   const navItems=[
-    {id:'tippen',    icon:'🎯', label:'Tippen'},
+    {id:'tippen',    icon:'⚽', label:'Tippen'},
     {id:'tabelle',   icon:'📊', label:'Tabelle'},
     {id:'rangliste', icon:'🏆', label:'Liga'},
     {id:'profil',    icon:null, label:profile?.displayName?.split(' ')[0]||'Profil'},
