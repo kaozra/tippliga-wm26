@@ -894,55 +894,60 @@ function PlayerStatTable({title, icon, rows, cols}) {
 
 // ── KO BRACKET ────────────────────────────────────────────────────────────────
 function KoBracket({results}) {
-  const rounds = [
-    { key:'R32', label:'Sechzehntelfinale', matches: MATCHES.filter(m=>m.group==='R32') },
-    { key:'QF',  label:'Viertelfinale',     matches: MATCHES.filter(m=>m.group==='QF') },
-    { key:'SF',  label:'Halbfinale',        matches: MATCHES.filter(m=>m.group==='SF') },
-    { key:'FIN', label:'Finale',            matches: MATCHES.filter(m=>m.group==='FIN') },
+  const [round, setRound] = useState('R32')
+  const ROUNDS = [
+    {key:'R32', short:'R32',  label:'Sechzehntelfinale'},
+    {key:'QF',  short:'QF',   label:'Viertelfinale'},
+    {key:'SF',  short:'SF',   label:'Halbfinale'},
+    {key:'P3',  short:'P3',   label:'Platz 3'},
+    {key:'FIN', short:'FIN',  label:'Finale'},
   ]
-  const p3 = MATCHES.filter(m=>m.group==='P3')
+  const matches = MATCHES.filter(m=>m.group===round)
 
-  function BracketMatch({match}) {
-    const r = results[match.id]
-    const hasResult = r&&r.homeGoals!=null
-    const homeWin = hasResult && r.homeGoals>r.awayGoals
-    const awayWin = hasResult && r.awayGoals>r.homeGoals
-    const homeFlag = TEAMS[match.home]?.code
-    const awayFlag = TEAMS[match.away]?.code
+  function BkTeam({name, win, lose, score}) {
+    const code = TEAMS[name]?.code
     return (
-      <div className="bracket-match">
-        <div className={`bracket-team${homeWin?' winner':awayWin?' loser':''}`}>
-          {homeFlag && <img src={flagUrl(homeFlag)} className="bracket-flag" alt=""/>}
-          <span className="bracket-name">{match.home}</span>
-          {hasResult && <span className="bracket-score">{r.homeGoals}</span>}
-        </div>
-        <div className={`bracket-team${awayWin?' winner':homeWin?' loser':''}`}>
-          {awayFlag && <img src={flagUrl(awayFlag)} className="bracket-flag" alt=""/>}
-          <span className="bracket-name">{match.away}</span>
-          {hasResult && <span className="bracket-score">{r.awayGoals}</span>}
-        </div>
+      <div className={`bk-team${win?' bk-win':lose?' bk-lose':''}`}>
+        {code ? <img src={flagUrl(code)} className="bk-flag" alt=""/> : <span className="bk-flag-ph"/>}
+        <span className="bk-name">{name}</span>
+        {score!=null && <span className="bk-score">{score}</span>}
       </div>
     )
   }
 
+  function BkMatch({m}) {
+    const r = results[m.id]
+    const done = r&&r.homeGoals!=null
+    const hWin = done&&r.homeGoals>r.awayGoals
+    const aWin = done&&r.awayGoals>r.homeGoals
+    return (
+      <div className={`bk-match${done?' bk-done':''}`}>
+        <BkTeam name={m.home} win={hWin} lose={aWin&&!hWin} score={done?r.homeGoals:null}/>
+        <div className="bk-sep"/>
+        <BkTeam name={m.away} win={aWin} lose={hWin&&!aWin} score={done?r.awayGoals:null}/>
+      </div>
+    )
+  }
+
+  const cols = round==='FIN'||round==='P3' ? 1 : round==='SF' ? 2 : round==='QF' ? 2 : 2
   return (
     <div className="ko-bracket">
-      <div className="bracket-scroll">
-        {rounds.map(round=>(
-          <div key={round.key} className="bracket-round">
-            <div className="bracket-round-label">{round.label}</div>
-            <div className="bracket-round-matches">
-              {round.matches.map(m=><BracketMatch key={m.id} match={m}/>)}
-            </div>
-          </div>
-        ))}
+      <div className="bk-tabs">
+        {ROUNDS.map(r=>{
+          const played = MATCHES.filter(m=>m.group===r.key&&results[m.id]?.homeGoals!=null).length
+          const total  = MATCHES.filter(m=>m.group===r.key).length
+          return (
+            <button key={r.key} className={`bk-tab${round===r.key?' active':''}`} onClick={()=>setRound(r.key)}>
+              {r.short}
+              {played>0&&<span className="bk-tab-dot"/>}
+            </button>
+          )
+        })}
       </div>
-      {p3.length>0 && (
-        <div className="bracket-p3">
-          <div className="bracket-round-label">Platz 3</div>
-          {p3.map(m=><BracketMatch key={m.id} match={m}/>)}
-        </div>
-      )}
+      <div className="bk-round-title">{ROUNDS.find(r=>r.key===round)?.label}</div>
+      <div className={`bk-grid cols-${cols}`}>
+        {matches.map(m=><BkMatch key={m.id} m={m}/>)}
+      </div>
     </div>
   )
 }
