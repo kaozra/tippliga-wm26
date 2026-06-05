@@ -30,6 +30,77 @@ function genCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
 }
 
+const TEAMS = {
+  // Gruppe A
+  'Mexiko':              { flag: '🇲🇽', strength: 79 },
+  'Südafrika':           { flag: '🇿🇦', strength: 61 },
+  'Südkorea':            { flag: '🇰🇷', strength: 74 },
+  'Tschechien':          { flag: '🇨🇿', strength: 72 },
+  // Gruppe B
+  'Kanada':              { flag: '🇨🇦', strength: 76 },
+  'Bosnien-Herzegowina': { flag: '🇧🇦', strength: 67 },
+  'Katar':               { flag: '🇶🇦', strength: 60 },
+  'Schweiz':             { flag: '🇨🇭', strength: 81 },
+  // Gruppe C
+  'Brasilien':           { flag: '🇧🇷', strength: 87 },
+  'Marokko':             { flag: '🇲🇦', strength: 78 },
+  'Haiti':               { flag: '🇭🇹', strength: 52 },
+  'Schottland':          { flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', strength: 71 },
+  // Gruppe D
+  'USA':                 { flag: '🇺🇸', strength: 78 },
+  'Paraguay':            { flag: '🇵🇾', strength: 67 },
+  'Australien':          { flag: '🇦🇺', strength: 73 },
+  'Türkei':              { flag: '🇹🇷', strength: 76 },
+  // Gruppe E
+  'Deutschland':         { flag: '🇩🇪', strength: 85 },
+  'Curaçao':             { flag: '🇨🇼', strength: 48 },
+  'Elfenbeinküste':      { flag: '🇨🇮', strength: 71 },
+  'Ecuador':             { flag: '🇪🇨', strength: 72 },
+  // Gruppe F
+  'Niederlande':         { flag: '🇳🇱', strength: 83 },
+  'Japan':               { flag: '🇯🇵', strength: 77 },
+  'Schweden':            { flag: '🇸🇪', strength: 75 },
+  'Tunesien':            { flag: '🇹🇳', strength: 66 },
+  // Gruppe G
+  'Belgien':             { flag: '🇧🇪', strength: 80 },
+  'Ägypten':             { flag: '🇪🇬', strength: 70 },
+  'Iran':                { flag: '🇮🇷', strength: 70 },
+  'Neuseeland':          { flag: '🇳🇿', strength: 59 },
+  // Gruppe H
+  'Spanien':             { flag: '🇪🇸', strength: 87 },
+  'Kap Verde':           { flag: '🇨🇻', strength: 58 },
+  'Saudi-Arabien':       { flag: '🇸🇦', strength: 69 },
+  'Uruguay':             { flag: '🇺🇾', strength: 79 },
+  // Gruppe I
+  'Frankreich':          { flag: '🇫🇷', strength: 90 },
+  'Senegal':             { flag: '🇸🇳', strength: 75 },
+  'Irak':                { flag: '🇮🇶', strength: 60 },
+  'Norwegen':            { flag: '🇳🇴', strength: 76 },
+  // Gruppe J
+  'Argentinien':         { flag: '🇦🇷', strength: 93 },
+  'Algerien':            { flag: '🇩🇿', strength: 69 },
+  'Österreich':          { flag: '🇦🇹', strength: 74 },
+  'Jordanien':           { flag: '🇯🇴', strength: 61 },
+  // Gruppe K
+  'Portugal':            { flag: '🇵🇹', strength: 88 },
+  'DR Kongo':            { flag: '🇨🇩', strength: 64 },
+  'Usbekistan':          { flag: '🇺🇿', strength: 59 },
+  'Kolumbien':           { flag: '🇨🇴', strength: 80 },
+  // Gruppe L
+  'England':             { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', strength: 86 },
+  'Kroatien':            { flag: '🇭🇷', strength: 78 },
+  'Ghana':               { flag: '🇬🇭', strength: 65 },
+  'Panama':              { flag: '🇵🇦', strength: 62 },
+}
+
+function strengthColor(s) {
+  if (s >= 87) return '#D4AF37'
+  if (s >= 80) return '#4ade80'
+  if (s >= 72) return '#60a5fa'
+  if (s >= 63) return '#fb923c'
+  return '#9ca3af'
+}
+
 const GROUPS = {
   A: ['Mexiko', 'Südafrika', 'Südkorea', 'Tschechien'],
   B: ['Kanada', 'Bosnien-Herzegowina', 'Katar', 'Schweiz'],
@@ -371,10 +442,18 @@ function TippenTab({ uid, results }) {
               ? <div className="ko-label">{koLabels[grp] || grp}</div>
               : <div className="group-header">
                   <span className="group-tag">{grp}</span>
-                  Gruppe {grp}
-                  <span style={{fontSize:11,color:'var(--muted)',fontFamily:'DM Sans',fontWeight:400,marginLeft:4}}>
-                    {GROUPS[grp]?.join(' · ')}
-                  </span>
+                  <span className="group-title">Gruppe {grp}</span>
+                  <div className="group-flags">
+                    {GROUPS[grp]?.map(t => (
+                      <span key={t} className="group-flag-item" title={t}>
+                        {TEAMS[t]?.flag}
+                        <span className="group-flag-name">{t}</span>
+                        <span className="group-flag-str" style={{color: strengthColor(TEAMS[t]?.strength || 0)}}>
+                          {TEAMS[t]?.strength}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
             }
             {groupedMatches[grp].map(m => (
@@ -387,11 +466,35 @@ function TippenTab({ uid, results }) {
   )
 }
 
+function TeamCell({ name, align = 'left' }) {
+  const t = TEAMS[name] || { flag: '🏳️', strength: 0 }
+  const sc = strengthColor(t.strength)
+  return (
+    <div className={`team-cell ${align}`}>
+      {align === 'right' && (
+        <>
+          <span className="str-badge" style={{ background: sc + '22', color: sc, borderColor: sc + '55' }}>{t.strength}</span>
+          <span className="team-cell-name">{name}</span>
+          <span className="team-cell-flag">{t.flag}</span>
+        </>
+      )}
+      {align === 'left' && (
+        <>
+          <span className="team-cell-flag">{t.flag}</span>
+          <span className="team-cell-name">{name}</span>
+          <span className="str-badge" style={{ background: sc + '22', color: sc, borderColor: sc + '55' }}>{t.strength}</span>
+        </>
+      )}
+    </div>
+  )
+}
+
 function MatchCard({ match, tip, result, now, onSave }) {
   const kickoff = parseMatchDate(match)
   const locked = now >= kickoff
   const [h, setH] = useState(tip?.homeGoals ?? '')
   const [a, setA] = useState(tip?.awayGoals ?? '')
+  const isKo = !TEAMS[match.home]
 
   useEffect(() => {
     setH(tip?.homeGoals ?? '')
@@ -403,34 +506,39 @@ function MatchCard({ match, tip, result, now, onSave }) {
   function handleBlur() { onSave(match.id, h, a) }
 
   return (
-    <div className="match-card">
+    <div className={`match-card${result ? ' has-result' : ''}${locked ? ' locked' : ''}`}>
       <div className="match-meta">{match.date} · {match.time} CEST</div>
-      <div className="match-teams">
-        <div className="team-name team-home">{match.home}</div>
-        {result
-          ? <div className="result-display">{result.homeGoals} : {result.awayGoals}</div>
-          : <div className="match-vs">vs</div>
+
+      <div className="match-row">
+        {isKo
+          ? <div className="team-cell left ko-team"><span className="team-cell-name ko">{match.home}</span></div>
+          : <TeamCell name={match.home} align="left" />
         }
-        <div className="team-name team-away">{match.away}</div>
-      </div>
-      {locked ? (
-        <div className="tip-shown">
-          {tip != null ? `${tip.homeGoals} : ${tip.awayGoals}` : '– : –'}
-          {pts != null && <div className="tip-points">{ptsLabel(pts)}</div>}
-          {pts == null && <div className="match-locked">🔒 Gesperrt</div>}
+
+        <div className="match-center-col">
+          {result ? (
+            <div className="result-score">{result.homeGoals}<span className="score-sep">:</span>{result.awayGoals}</div>
+          ) : locked ? (
+            <div className="tip-locked-score">{tip != null ? `${tip.homeGoals}:${tip.awayGoals}` : '?:?'}</div>
+          ) : (
+            <div className="tip-inputs-row">
+              <input className="tip-inp" type="number" min="0" max="99" value={h}
+                onChange={e => setH(e.target.value)} onBlur={handleBlur} placeholder="–" />
+              <span className="score-sep-input">:</span>
+              <input className="tip-inp" type="number" min="0" max="99" value={a}
+                onChange={e => setA(e.target.value)} onBlur={handleBlur} placeholder="–" />
+            </div>
+          )}
+          {pts != null && <div className="pts-row">{ptsLabel(pts)}</div>}
+          {locked && pts == null && !result && tip == null && <div className="no-tip-label">kein Tipp</div>}
+          {!locked && tip != null && h !== '' && <div className="saved-tick">✓</div>}
         </div>
-      ) : (
-        <>
-          <div className="tip-row">
-            <input className="tip-input" type="number" min="0" max="99" value={h}
-              onChange={e => setH(e.target.value)} onBlur={handleBlur} placeholder="–" />
-            <div className="tip-dash">:</div>
-            <input className="tip-input" type="number" min="0" max="99" value={a}
-              onChange={e => setA(e.target.value)} onBlur={handleBlur} placeholder="–" />
-          </div>
-          {tip != null && <div className="tip-points" style={{color:'var(--text-dim)'}}>Gespeichert ✓</div>}
-        </>
-      )}
+
+        {isKo
+          ? <div className="team-cell right ko-team"><span className="team-cell-name ko">{match.away}</span></div>
+          : <TeamCell name={match.away} align="right" />
+        }
+      </div>
     </div>
   )
 }
