@@ -995,7 +995,7 @@ function TabelleTab({ results, onTeamClick }) {
         <button className={`tab-sw-btn${view==='groups'?' active':''}`} onClick={()=>setView('groups')}>Gruppen A–L</button>
         <button className={`tab-sw-btn${view==='turnier'?' active':''}`} onClick={()=>setView('turnier')}>Turnier-Ranking</button>
         <button className={`tab-sw-btn${view==='spieler'?' active':''}`} onClick={()=>setView('spieler')}>Spieler</button>
-        <button className={`tab-sw-btn${view==='bracket'?' active':''}`} onClick={()=>setView('bracket')}>Bracket</button>
+        <button className={`tab-sw-btn${view==='bracket'?' active':''}`} onClick={()=>setView('bracket')}>Turnierplan</button>
       </div>
 
       {/* ALL GROUPS */}
