@@ -112,6 +112,30 @@ MATCHES.forEach(m => { LOOKUP[`${m.home}|${m.away}`] = m.id })
 // Live statuses worth syncing
 const SYNC_STATUSES = new Set(['1H','HT','2H','ET','BT','P','FT','AET','PEN'])
 
+async function syncEvents(fixtureId, matchId) {
+  const existing = await db.collection('events').doc(matchId).get()
+  if (existing.exists) return
+  const resp = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${fixtureId}`, {
+    headers: { 'x-apisports-key': API_KEY }
+  })
+  const data = await resp.json()
+  const events = (data.response || [])
+    .filter(e => ['Goal','Card'].includes(e.type))
+    .map(e => ({
+      time: e.time.elapsed,
+      extra: e.time.extra || null,
+      type: e.type,
+      detail: e.detail,
+      player: e.player.name,
+      assist: e.assist?.name || null,
+      teamName: e.team.name,
+    }))
+  await db.collection('events').doc(matchId).set({
+    matchId, events, updatedAt: FieldValue.serverTimestamp()
+  })
+  console.log(`[sync] 📋 Events for ${matchId}: ${events.length} events`)
+}
+
 async function sync() {
   const today = new Date().toISOString().split('T')[0]
   console.log(`[sync] Fetching WM 2026 fixtures for ${today}`)
@@ -152,10 +176,14 @@ async function sync() {
     if (homeGoals === null || awayGoals === null) { skipped++; continue }
 
     await db.collection('results').doc(matchId).set({
-      homeGoals, awayGoals, matchId, status,
+      homeGoals, awayGoals, matchId, status, fixtureId: f.fixture.id,
       updatedAt: FieldValue.serverTimestamp(),
       source: 'api-football',
     }, { merge: true })
+
+    if (['FT','AET','PEN'].includes(status)) {
+      await syncEvents(f.fixture.id, matchId)
+    }
 
     console.log(`[sync] ✅ ${matchId}: ${homeDE} ${homeGoals}:${awayGoals} ${awayDE} (${status})`)
     updated++

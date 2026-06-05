@@ -275,3 +275,36 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
   .gt-head{grid-template-columns:20px 1fr 24px 24px 24px 24px 32px}
   .gt-row{grid-template-columns:20px 1fr 24px 24px 24px 24px 32px}
 }
+
+/* ── MATCH EVENTS ── */
+.match-events{border-top:1px solid var(--dark-4);margin-top:4px;padding-top:4px}
+.events-toggle{width:100%;background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;padding:4px 0}
+.events-toggle:hover{color:var(--text)}
+.events-toggle span{display:flex;align-items:center;gap:3px}
+.events-chevron{transition:transform .2s;font-size:14px;line-height:1;margin-left:4px}
+.events-chevron.open{transform:rotate(90deg)}
+.events-list{display:flex;flex-direction:column;gap:3px;padding:6px 0 2px}
+.event-row{display:flex;align-items:center;gap:4px;font-size:11px;padding:1px 0}
+.event-row.home{flex-direction:row;justify-content:flex-start}
+.event-row.away{flex-direction:row-reverse;justify-content:flex-start}
+.event-icon{font-size:12px;flex-shrink:0}
+.event-time{color:var(--muted);min-width:30px;text-align:center;flex-shrink:0}
+.event-player{color:var(--text-dim);font-weight:600}
+.event-assist{color:var(--muted);font-size:10px}
+
+/* ── PLAYER STATS ── */
+.player-stats{display:flex;flex-direction:column;gap:16px;margin-top:12px}
+.pst-block{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius)}
+.pst-title{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);letter-spacing:.5px;padding:10px 12px 6px;border-bottom:1px solid var(--dark-4)}
+.pst-table{padding:0}
+.pst-head{display:flex;align-items:center;padding:5px 12px;background:var(--dark-3);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.pst-row{display:flex;align-items:center;padding:7px 12px;border-bottom:1px solid var(--dark-4)}
+.pst-row:last-child{border-bottom:none}
+.pst-row.alt{background:var(--dark-3)}
+.pst-c{display:flex;align-items:center}
+.pst-rank{width:22px;flex-shrink:0;color:var(--muted);font-size:11px}
+.pst-name-h{flex:1;font-size:10px}
+.pst-name{flex:1;gap:6px;font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden}
+.pst-flag{width:20px;height:14px;object-fit:cover;border-radius:2px;flex-shrink:0}
+.pst-num{width:56px;justify-content:flex-end;font-size:11px;color:var(--muted)}
+.pst-val{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text);letter-spacing:.5px}

@@ -88,6 +88,8 @@ const TEAMS = {
   'Panama':              { code:'pa', strength:62 },
 }
 
+const TEAM_MAP_DE = {'Mexico':'Mexiko','South Africa':'Südafrika','Korea Republic':'Südkorea','Czech Republic':'Tschechien','Czechia':'Tschechien','Canada':'Kanada','Bosnia and Herzegovina':'Bosnien-Herzegowina','Qatar':'Katar','Switzerland':'Schweiz','Brazil':'Brasilien','Morocco':'Marokko','Haiti':'Haiti','Scotland':'Schottland','United States':'USA','USA':'USA','Paraguay':'Paraguay','Australia':'Australien','Turkey':'Türkei','Turkiye':'Türkei','Germany':'Deutschland','Curacao':'Curaçao',"Cote d'Ivoire":'Elfenbeinküste','Ivory Coast':'Elfenbeinküste','Ecuador':'Ecuador','Netherlands':'Niederlande','Japan':'Japan','Sweden':'Schweden','Tunisia':'Tunesien','Belgium':'Belgien','Egypt':'Ägypten','Iran':'Iran','New Zealand':'Neuseeland','Spain':'Spanien','Cape Verde':'Kap Verde','Saudi Arabia':'Saudi-Arabien','Uruguay':'Uruguay','France':'Frankreich','Senegal':'Senegal','Iraq':'Irak','Norway':'Norwegen','Argentina':'Argentinien','Algeria':'Algerien','Austria':'Österreich','Jordan':'Jordanien','Portugal':'Portugal','DR Congo':'DR Kongo','Congo DR':'DR Kongo','Uzbekistan':'Usbekistan','Colombia':'Kolumbien','England':'England','Croatia':'Kroatien','Ghana':'Ghana','Panama':'Panama'}
+
 const TEAM_INFO = {
   'Schweiz':       { coach:'Murat Yakin',       players:['Granit Xhaka','Manuel Akanji','Xherdan Shaqiri','Breel Embolo'] },
   'Deutschland':   { coach:'Julian Nagelsmann', players:['Jamal Musiala','Florian Wirtz','Niclas Füllkrug','Kai Havertz'] },
@@ -514,8 +516,40 @@ function GroupTable({group, results, onTeamClick}) {
   )
 }
 
+// ── MATCH EVENTS ─────────────────────────────────────────────────────────────
+function MatchEvents({events, match}) {
+  const [open, setOpen] = useState(false)
+  const goals = events.filter(e=>e.type==='Goal')
+  const cards = events.filter(e=>e.type==='Card')
+  return (
+    <div className="match-events">
+      <button className="events-toggle" onClick={()=>setOpen(v=>!v)}>
+        {goals.length>0 && <span>⚽ {goals.length}</span>}
+        {cards.filter(c=>c.detail?.includes('Yellow')).length>0 && <span>🟨 {cards.filter(c=>c.detail?.includes('Yellow')).length}</span>}
+        {cards.filter(c=>c.detail?.includes('Red')).length>0 && <span>🟥 {cards.filter(c=>c.detail?.includes('Red')).length}</span>}
+        <span className={`events-chevron${open?' open':''}`}>›</span>
+      </button>
+      {open && (
+        <div className="events-list">
+          {events.map((e,i)=>{
+            const isHome = e.teamName===match.home || TEAM_MAP_DE[e.teamName]===match.home
+            const icon = e.type==='Goal' ? (e.detail==='Own Goal'?'⚽🔄':'⚽') : e.detail?.includes('Red')?'🟥':'🟨'
+            const timeStr = e.extra ? `${e.time}+${e.extra}'` : `${e.time}'`
+            return (
+              <div key={i} className={`event-row${isHome?' home':' away'}`}>
+                {isHome && <><span className="event-player">{e.player}</span>{e.assist&&<span className="event-assist">({e.assist})</span>}<span className="event-time">{timeStr}</span><span className="event-icon">{icon}</span></>}
+                {!isHome && <><span className="event-icon">{icon}</span><span className="event-time">{timeStr}</span><span className="event-player">{e.player}</span>{e.assist&&<span className="event-assist">({e.assist})</span>}</>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── MATCH CARD ────────────────────────────────────────────────────────────────
-function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false, allTips=[], allUsers=[]}) {
+function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false, allTips=[], allUsers=[], allEvents={}}) {
   const kickoff = parseMatchDate(match)
   const locked = now >= kickoff
   const isLive = now >= kickoff && now.getTime() <= kickoff.getTime() + 110*60*1000
@@ -581,6 +615,9 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
         }
       </div>
       {locked && <MatchTipsPanel matchId={match.id} allTips={allTips} allUsers={allUsers} result={result} />}
+      {result && allEvents[match.id]?.length > 0 && (
+        <MatchEvents events={allEvents[match.id]} match={match} />
+      )}
     </div>
   )
 }
@@ -602,7 +639,7 @@ function Countdown({kickoff}) {
 }
 
 // ── NEXT VIEW ─────────────────────────────────────────────────────────────────
-function NextView({tips, results, now, uid, onSave, onTeamClick, allTips=[], allUsers=[]}) {
+function NextView({tips, results, now, uid, onSave, onTeamClick, allTips=[], allUsers=[], allEvents={}}) {
   const upcoming = MATCHES
     .filter(m=>!['R32','QF','SF','P3','FIN'].includes(m.group))
     .map(m=>({...m,kickoff:parseMatchDate(m)}))
@@ -647,7 +684,7 @@ function NextView({tips, results, now, uid, onSave, onTeamClick, allTips=[], all
                 {TEAMS[m.away]?.code && <img src={flagUrl(TEAMS[m.away].code)} className="next-flag" alt={m.away} />}
               </div>
             </div>
-            <MatchCard match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact allTips={allTips} allUsers={allUsers} />
+            <MatchCard match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
           </div>
         )
       })}
@@ -655,7 +692,7 @@ function NextView({tips, results, now, uid, onSave, onTeamClick, allTips=[], all
         <div className="upcoming-section">
           <div className="upcoming-title">Weitere bevorstehende Spiele</div>
           {upcoming.slice(concurrent.length, concurrent.length+6).map(m=>(
-            <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact allTips={allTips} allUsers={allUsers} />
+            <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
           ))}
         </div>
       )}
@@ -664,7 +701,7 @@ function NextView({tips, results, now, uid, onSave, onTeamClick, allTips=[], all
 }
 
 // ── GROUP VIEW ────────────────────────────────────────────────────────────────
-function GroupView({group, tips, results, now, onSave, onTeamClick, allTips=[], allUsers=[]}) {
+function GroupView({group, tips, results, now, onSave, onTeamClick, allTips=[], allUsers=[], allEvents={}}) {
   const groupMatches = MATCHES.filter(m=>m.group===group)
   const upcoming = groupMatches.filter(m=>parseMatchDate(m)>now)
   const played = groupMatches.filter(m=>results[m.id]&&results[m.id].homeGoals!=null)
@@ -674,13 +711,13 @@ function GroupView({group, tips, results, now, onSave, onTeamClick, allTips=[], 
       {played.length>0 && (
         <div className="matches-section">
           <div className="matches-section-title">Gespielte Spiele</div>
-          {played.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} />)}
+          {played.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />)}
         </div>
       )}
       {upcoming.length>0 && (
         <div className="matches-section">
           <div className="matches-section-title">Nächste Spiele</div>
-          {upcoming.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} />)}
+          {upcoming.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />)}
         </div>
       )}
     </div>
@@ -688,13 +725,13 @@ function GroupView({group, tips, results, now, onSave, onTeamClick, allTips=[], 
 }
 
 // ── KO VIEW ───────────────────────────────────────────────────────────────────
-function KoView({koGroup, tips, results, now, onSave, onTeamClick, allTips=[], allUsers=[]}) {
+function KoView({koGroup, tips, results, now, onSave, onTeamClick, allTips=[], allUsers=[], allEvents={}}) {
   const koLabels={R32:'⚡ Sechzehntelfinale',QF:'🏆 Viertelfinale',SF:'🔥 Halbfinale',P3:'🥉 Platz 3',FIN:'🥇 Finale'}
   const matches = MATCHES.filter(m=>m.group===koGroup)
   return (
     <div>
       <div className="ko-section-title">{koLabels[koGroup]||koGroup}</div>
-      {matches.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} />)}
+      {matches.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />)}
     </div>
   )
 }
@@ -735,6 +772,7 @@ function TippenTab({uid, results}) {
   const [tips, setTips] = useState({})
   const [allTips, setAllTips] = useState([])
   const [allUsers, setAllUsers] = useState([])
+  const [allEvents, setAllEvents] = useState({})
   const [filter, setFilter] = useState('NEXT')
   const [selectedTeam, setSelectedTeam] = useState(null)
   const sliderRef = useRef(null)
@@ -755,6 +793,15 @@ function TippenTab({uid, results}) {
     })
     return unsub
   },[uid])
+
+  useEffect(()=>{
+    const unsub = onSnapshot(collection(db,'events'), snap=>{
+      const e={}
+      snap.docs.forEach(d=>{ e[d.id]=d.data().events||[] })
+      setAllEvents(e)
+    })
+    return unsub
+  },[])
 
   useEffect(()=>{
     getDocs(collection(db,'users')).then(snap=>setAllUsers(snap.docs.map(d=>({uid:d.id,...d.data()}))))
@@ -790,12 +837,47 @@ function TippenTab({uid, results}) {
 
       {/* Content */}
       <div style={{marginTop:12}}>
-        {filter==='NEXT' && <NextView tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} />}
-        {filter in GROUPS && <GroupView group={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} />}
-        {['R32','QF','SF','P3','FIN'].includes(filter) && <KoView koGroup={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} />}
+        {filter==='NEXT' && <NextView tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
+        {filter in GROUPS && <GroupView group={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
+        {['R32','QF','SF','P3','FIN'].includes(filter) && <KoView koGroup={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
       </div>
 
       {selectedTeam && <TeamModal team={selectedTeam} onClose={()=>setSelectedTeam(null)} results={results} />}
+    </div>
+  )
+}
+
+// ── PLAYER STAT TABLE ─────────────────────────────────────────────────────────
+function PlayerStatTable({title, icon, rows, cols}) {
+  if(!rows?.length) return null
+  const TEAMS_DATA = Object.entries(TEAMS)
+  function getFlagCode(teamDE) {
+    const entry = TEAMS_DATA.find(([name])=>name===teamDE)
+    return entry?.[1]?.code||null
+  }
+  return (
+    <div className="pst-block">
+      <div className="pst-title">{icon} {title}</div>
+      <div className="pst-table">
+        <div className="pst-head">
+          <span className="pst-c pst-rank">#</span>
+          <span className="pst-c pst-name-h">Spieler</span>
+          {cols.map(c=><span key={c.key} className="pst-c pst-num">{c.label}</span>)}
+        </div>
+        {rows.map((r,i)=>{
+          const flagCode = getFlagCode(r.team)
+          return (
+            <div key={i} className={`pst-row${i%2===0?'':' alt'}`}>
+              <span className="pst-c pst-rank">{i+1}</span>
+              <span className="pst-c pst-name">
+                {flagCode && <img src={`https://flagcdn.com/w20/${flagCode}.webp`} className="pst-flag" alt={r.team}/>}
+                {r.name}
+              </span>
+              {cols.map(c=><span key={c.key} className="pst-c pst-num pst-val">{r[c.key]??0}</span>)}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -811,8 +893,15 @@ const SORT_OPTIONS = [
 ]
 
 function TabelleTab({ results, onTeamClick }) {
-  const [view, setView] = useState('groups')   // 'groups' | 'turnier'
+  const [view, setView] = useState('groups')   // 'groups' | 'turnier' | 'spieler'
   const [sortBy, setSortBy] = useState('pts')
+  const [playerStats, setPlayerStats] = useState(null)
+  useEffect(()=>{
+    const unsub = onSnapshot(doc(db,'playerstats','wm2026'), snap=>{
+      if(snap.exists()) setPlayerStats(snap.data())
+    })
+    return unsub
+  },[])
 
   // All 48 teams across all groups
   const allTeams = Object.keys(GROUPS).flatMap(g =>
@@ -835,6 +924,7 @@ function TabelleTab({ results, onTeamClick }) {
       <div className="tab-switcher">
         <button className={`tab-sw-btn${view==='groups'?' active':''}`} onClick={()=>setView('groups')}>Gruppen A–L</button>
         <button className={`tab-sw-btn${view==='turnier'?' active':''}`} onClick={()=>setView('turnier')}>Turnier-Ranking</button>
+        <button className={`tab-sw-btn${view==='spieler'?' active':''}`} onClick={()=>setView('spieler')}>Spieler</button>
       </div>
 
       {/* ALL GROUPS */}
@@ -924,6 +1014,38 @@ function TabelleTab({ results, onTeamClick }) {
           <div style={{fontSize:10,color:'var(--muted)',marginTop:8,textAlign:'center'}}>
             Klick auf eine Mannschaft für Details
           </div>
+        </div>
+      )}
+
+      {/* SPIELER STATS */}
+      {view==='spieler' && (
+        <div className="player-stats">
+          {!playerStats && <div className="loading">Noch keine Daten verfügbar</div>}
+          {playerStats && <>
+            <PlayerStatTable title="Torschützenkönig" icon="⚽" rows={playerStats.topscorers||[]} cols={[
+              {key:'goals', label:'Tore'},
+              {key:'assists', label:'Vorlagen'},
+              {key:'games', label:'Spiele'},
+            ]}/>
+            <PlayerStatTable title="Beste Vorlagen" icon="🎯" rows={playerStats.topassists||[]} cols={[
+              {key:'assists', label:'Vorlagen'},
+              {key:'goals', label:'Tore'},
+              {key:'games', label:'Spiele'},
+            ]}/>
+            <PlayerStatTable title="Bester Torhüter" icon="🧤" rows={playerStats.topgoalkeepers||[]} cols={[
+              {key:'cleanSheets', label:'Clean Sheets'},
+              {key:'saves', label:'Paraden'},
+              {key:'conceded', label:'Gegentore'},
+            ]}/>
+            <PlayerStatTable title="Gelbe Karten" icon="🟨" rows={playerStats.topyellow||[]} cols={[
+              {key:'yellow', label:'Gelb'},
+              {key:'red', label:'Rot'},
+            ]}/>
+            <PlayerStatTable title="Rote Karten" icon="🟥" rows={playerStats.topred||[]} cols={[
+              {key:'red', label:'Rot'},
+              {key:'yellow', label:'Gelb'},
+            ]}/>
+          </>}
         </div>
       )}
     </div>
