@@ -1307,7 +1307,6 @@ function RanglisteTab({uid, results}) {
                   </div>
                   <div className="podium-platform" style={{height:platH[rank]}}>
                     <span className="podium-rank-num">{rank}</span>
-                    <span className="podium-tips-lbl">{u.tipCount} Tipps</span>
                   </div>
                 </div>
               )
@@ -1330,7 +1329,6 @@ function RanglisteTab({uid, results}) {
                     </div>
                     <div className="rank-pts-wrap">
                       <div className="rank-pts">{u.pts}</div>
-                      <div className="rank-pts-label">{u.tipCount} Tipps</div>
                     </div>
                   </div>
                 )
@@ -1342,16 +1340,18 @@ function RanglisteTab({uid, results}) {
           {achievements.length>0 && (
             <div className="achievements">
               <div className="achievements-title">Auszeichnungen</div>
-              <div className="achievements-grid">
+              <div className="achievements-list">
                 {achievements.map(a=>(
-                  <div key={a.title} className="achievement-card">
-                    <div className="ach-icon">{a.icon}</div>
-                    <div className="ach-title">{a.title}</div>
+                  <div key={a.title} className="ach-row">
+                    <span className="ach-icon">{a.icon}</span>
+                    <div className="ach-info">
+                      <span className="ach-title">{a.title}</span>
+                      <span className="ach-desc">{a.desc}</span>
+                    </div>
                     <div className="ach-holder">
                       <InitialsAvatar name={a.user.displayName||'?'} uid={a.user.uid} size={22}/>
                       <span>{a.user.displayName}</span>
                     </div>
-                    <div className="ach-desc">{a.desc}</div>
                   </div>
                 ))}
               </div>

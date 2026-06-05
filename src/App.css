@@ -259,12 +259,14 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 /* Achievements */
 .achievements{margin-top:4px}
 .achievements-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-.achievements-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.achievement-card{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius);padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
-.ach-icon{font-size:22px;line-height:1}
-.ach-title{font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.2px}
-.ach-holder{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text)}
-.ach-desc{font-size:9px;color:var(--muted)}
+.achievements-list{display:flex;flex-direction:column;gap:6px}
+.ach-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--dark-4)}
+.ach-row:last-child{border-bottom:none}
+.ach-icon{font-size:20px;flex-shrink:0;width:26px;text-align:center}
+.ach-info{flex:1;display:flex;flex-direction:column;gap:1px}
+.ach-title{font-size:11px;font-weight:700;color:var(--gold)}
+.ach-desc{font-size:10px;color:var(--muted)}
+.ach-holder{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--text);flex-shrink:0}
 
 /* ── PROFIL ── */
 .profile-section{margin-bottom:18px}
