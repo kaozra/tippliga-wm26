@@ -1250,26 +1250,66 @@ function RanglisteTab({uid, results}) {
     const pts=myTips.reduce((s,t)=>{ const r=results[t.matchId],p=r?calcPoints(t,r):0; return s+(p||0) },0)
     return{...u,pts,tipCount:myTips.length}
   }).sort((a,b)=>b.pts-a.pts)
-  const medals=['🥇','🥈','🥉']
   const maxPts = board[0]?.pts||1
+  const platH = {1:56,2:38,3:24}
+
+  // Achievements
+  const achievements = (() => {
+    if(!board.length) return []
+    const stats = board.map(u=>{
+      const myT = allTips.filter(t=>t.uid===u.uid)
+      const played = myT.filter(t=>{ const r=results[t.matchId]; return r&&r.homeGoals!=null })
+      const exact = played.filter(t=>calcPoints(t,results[t.matchId])===3).length
+      const zeros = played.filter(t=>(calcPoints(t,results[t.matchId])||0)===0).length
+      const scored = played.filter(t=>(calcPoints(t,results[t.matchId])||0)>0).length
+      const quote = played.length>0?scored/played.length:0
+      const sorted = [...played].sort((a,b)=>{const ma=MATCHES.find(m=>m.id===a.matchId),mb=MATCHES.find(m=>m.id===b.matchId);return(ma?.date+ma?.time||'').localeCompare(mb?.date+mb?.time||'')})
+      let cur=0; sorted.forEach(t=>{const p=calcPoints(t,results[t.matchId])||0;p>0?cur++:cur=0})
+      return{...u,exact,zeros,quote,scored,cur,played:played.length}
+    })
+    const best=(key,min=0)=>{ const s=[...stats].sort((a,b)=>b[key]-a[key]); return s[0]?.[key]>=min?s[0]:null }
+    const list=[]
+    const sh=best('quote',.01); if(sh) list.push({icon:'🎯',title:'Scharfschütze',desc:'Beste Trefferquote',user:sh})
+    const ex=best('exact',1);   if(ex) list.push({icon:'⭐',title:'Exaktester',desc:'Meiste exakte Treffer',user:ex})
+    const fi=best('cur',1);     if(fi) list.push({icon:'🔥',title:'On Fire',desc:'Längste aktuelle Serie',user:fi})
+    const pb=best('zeros',1);   if(pb) list.push({icon:'💀',title:'Pechvogel',desc:'Meiste Nieten',user:pb})
+    const fl=best('tipCount',1);if(fl) list.push({icon:'✍️',title:'Fleissigster',desc:'Meiste Tipps abgegeben',user:fl})
+    return list
+  })()
+
+  // Podium order: 2nd left, 1st center, 3rd right
+  const top = board.slice(0,Math.min(3,board.length))
+  const podiumOrder = top.length>=3?[top[1],top[0],top[2]]:top.length===2?[top[1],top[0]]:[top[0]]
+  const podiumRank  = top.length>=3?[2,1,3]:top.length===2?[2,1]:[1]
+
   return (
     <div className="rangliste-wrap">
       {board.length===0 && <div className="loading">Laden…</div>}
       {board.length>0 && (
         <>
-          {/* Top 3 Podium */}
+          {/* Podium 2-1-3 */}
           <div className="podium">
-            {board.slice(0,Math.min(3,board.length)).map((u,i)=>(
-              <div key={u.uid} className={`podium-card rank-${i+1}${u.uid===uid?' me':''}`} onClick={()=>setSelectedUser(u)}>
-                <div className="podium-medal">{medals[i]}</div>
-                <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={i===0?52:44}/>
-                <div className="podium-name">{u.displayName}{u.uid===uid&&<span className="du-badge">Du</span>}</div>
-                <div className="podium-pts">{u.pts}<span className="podium-pts-lbl">Pkt</span></div>
-                <div className="podium-tips">{u.tipCount} Tipps</div>
-              </div>
-            ))}
+            {podiumOrder.map((u,i)=>{
+              const rank=podiumRank[i]
+              const medals={1:'🥇',2:'🥈',3:'🥉'}
+              return (
+                <div key={u.uid} className={`podium-slot${u.uid===uid?' me':''}`} onClick={()=>setSelectedUser(u)}>
+                  <div className="podium-upper">
+                    <div className="podium-medal">{medals[rank]}</div>
+                    <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={rank===1?52:42}/>
+                    <div className="podium-name">{u.displayName}</div>
+                    <div className="podium-pts">{u.pts}<span className="podium-pts-lbl">Pkt</span></div>
+                  </div>
+                  <div className="podium-platform" style={{height:platH[rank]}}>
+                    <span className="podium-rank-num">{rank}</span>
+                    <span className="podium-tips-lbl">{u.tipCount} Tipps</span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-          {/* Rest */}
+
+          {/* Rest 4+ */}
           {board.length>3 && (
             <div className="rank-list">
               {board.slice(3).map((u,i)=>{
@@ -1280,7 +1320,7 @@ function RanglisteTab({uid, results}) {
                     <div className="rank-pos">{rank}</div>
                     <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={34}/>
                     <div className="rank-info">
-                      <div className="rank-name">{u.displayName}{u.uid===uid&&<span className="du-badge">Du</span>}</div>
+                      <div className="rank-name">{u.displayName}</div>
                       <div className="rank-bar-wrap"><div className="rank-bar" style={{width:`${pct}%`}}/></div>
                     </div>
                     <div className="rank-pts-wrap">
@@ -1292,7 +1332,27 @@ function RanglisteTab({uid, results}) {
               })}
             </div>
           )}
-          <div className="rank-legend">⭐ 3P Exakt · ✓ 2P Tendenz+Tor · ~ 1P Tendenz</div>
+
+          {/* Abzeichen */}
+          {achievements.length>0 && (
+            <div className="achievements">
+              <div className="achievements-title">Auszeichnungen</div>
+              <div className="achievements-grid">
+                {achievements.map(a=>(
+                  <div key={a.title} className="achievement-card">
+                    <div className="ach-icon">{a.icon}</div>
+                    <div className="ach-title">{a.title}</div>
+                    <div className="ach-holder">
+                      <InitialsAvatar name={a.user.displayName||'?'} uid={a.user.uid} size={22}/>
+                      <span>{a.user.displayName}</span>
+                    </div>
+                    <div className="ach-desc">{a.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {board.length>1 && <RangVerlauf board={board} allTips={allTips} results={results}/>}
         </>
       )}
