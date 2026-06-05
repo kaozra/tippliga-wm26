@@ -25,7 +25,13 @@ const auth = getAuth(fbApp)
 const db = getFirestore(fbApp)
 
 const ADMIN_EMAIL = 'kaozra@hotmail.com'
-const AVATARS = ['⚽','🦁','🐯','🦊','🐺','🦅','🐲','🦄','🐻','🦋','🐬','🦈','🐆','🦉','🦜','🐸']
+const AVATAR_COLORS = ['#E63946','#F4A261','#2A9D8F','#457B9D','#9B5DE5','#F72585','#4CC9F0','#06D6A0','#FB8500','#8338EC']
+function InitialsAvatar({name, size=36}) {
+  const n = name||'?'
+  const initials = n.trim().split(/\s+/).map(w=>w[0]?.toUpperCase()||'').slice(0,2).join('')||'?'
+  const color = AVATAR_COLORS[[...n].reduce((s,c)=>s+c.charCodeAt(0),0) % AVATAR_COLORS.length]
+  return <div className="initials-avatar" style={{width:size,height:size,minWidth:size,background:color,fontSize:Math.round(size*0.38)}}>{initials}</div>
+}
 function genCode() { return Math.random().toString(36).substring(2, 8).toUpperCase() }
 function flagUrl(code) { return `https://flagcdn.com/${code}.svg` }
 
@@ -897,7 +903,7 @@ function RanglisteTab({uid, results}) {
         {board.map((u,i)=>(
           <div key={u.uid} className={`rank-item${u.uid===uid?' me':''}`}>
             <div className={`rank-pos${i===0?' top1':i===1?' top2':i===2?' top3':''}`}>{i+1}</div>
-            <div className="rank-avatar">{u.avatar||'⚽'}</div>
+            <InitialsAvatar name={u.displayName||'?'} size={32}/>
             <div className="rank-name">{u.displayName}{u.uid===uid?' (Du)':''}</div>
             <div className="rank-pts-wrap"><div className="rank-pts">{u.pts}</div><div className="rank-pts-label">Pkt</div></div>
           </div>
@@ -911,14 +917,13 @@ function RanglisteTab({uid, results}) {
 // ── PROFIL ────────────────────────────────────────────────────────────────────
 function ProfilTab({user, profile, results, onProfileUpdate}) {
   const [name, setName] = useState(profile?.displayName||'')
-  const [avatar, setAvatar] = useState(profile?.avatar||'⚽')
   const [oldPw, setOldPw] = useState(''), [newPw, setNewPw] = useState('')
   const [showOld, setShowOld] = useState(false), [showNew, setShowNew] = useState(false)
   const [msg, setMsg] = useState(''), [err, setErr] = useState('')
   const [myTips, setMyTips] = useState([])
   const [allUsers, setAllUsers] = useState([])
   const [allTips, setAllTips] = useState([])
-  useEffect(()=>{setName(profile?.displayName||'');setAvatar(profile?.avatar||'⚽')},[profile])
+  useEffect(()=>{setName(profile?.displayName||'')},[profile])
   useEffect(()=>{
     const u1=onSnapshot(collection(db,'tips'),snap=>{ const all=snap.docs.map(d=>d.data()); setAllTips(all); setMyTips(all.filter(t=>t.uid===user.uid)) })
     const u2=onSnapshot(collection(db,'users'),snap=>setAllUsers(snap.docs.map(d=>({uid:d.id,...d.data()}))))
@@ -943,9 +948,9 @@ function ProfilTab({user, profile, results, onProfileUpdate}) {
   async function saveProfile(){
     setMsg('');setErr('')
     try{
-      await setDoc(doc(db,'users',user.uid),{displayName:name,avatar},{merge:true})
+      await setDoc(doc(db,'users',user.uid),{displayName:name},{merge:true})
       await updateProfile(user,{displayName:name})
-      onProfileUpdate({displayName:name,avatar}); setMsg('Gespeichert ✓')
+      onProfileUpdate({displayName:name}); setMsg('Gespeichert ✓')
     }catch{setErr('Fehler beim Speichern')}
   }
   async function changePw(){
@@ -973,10 +978,9 @@ function ProfilTab({user, profile, results, onProfileUpdate}) {
         </div>
       </div>
       <div className="profile-section">
-        <h3>Avatar & Name</h3>
+        <h3>Name</h3>
         <div className="profile-card">
-          <div className="profile-avatar-big">{avatar}</div>
-          <div className="avatar-grid">{AVATARS.map(a=><button key={a} className={`avatar-btn${avatar===a?' selected':''}`} onClick={()=>setAvatar(a)}>{a}</button>)}</div>
+          <div className="profile-avatar-big"><InitialsAvatar name={name||profile?.displayName||'?'} size={64}/></div>
           <div className="field" style={{marginTop:12}}><label>Anzeigename</label><input value={name} onChange={e=>setName(e.target.value)} /></div>
           {msg&&<p className="success-msg">{msg}</p>}{err&&<p className="err">{err}</p>}
           <button className="save-btn" onClick={saveProfile}>Speichern</button>
@@ -1072,7 +1076,7 @@ function AdminMatchCard({match, result}) {
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 function RegisterForm({onSwitch}) {
   const [name,setName]=useState(''), [email,setEmail]=useState(''), [pw,setPw]=useState(''), [pw2,setPw2]=useState('')
-  const [avatar,setAvatar]=useState('⚽'), [code,setCode]=useState(''), [showPw,setShowPw]=useState(false), [showPw2,setShowPw2]=useState(false)
+  const [code,setCode]=useState(''), [showPw,setShowPw]=useState(false), [showPw2,setShowPw2]=useState(false)
   const [err,setErr]=useState(''), [loading,setLoading]=useState(false)
   const urlCode=new URLSearchParams(window.location.search).get('code')||''
   useEffect(()=>{if(urlCode) setCode(urlCode)},[urlCode])
@@ -1091,7 +1095,7 @@ function RegisterForm({onSwitch}) {
     try{
       const {user}=await createUserWithEmailAndPassword(auth,email,pw)
       await updateProfile(user,{displayName:name.trim()}); await sendEmailVerification(user)
-      await setDoc(doc(db,'users',user.uid),{displayName:name.trim(),email:email.toLowerCase(),avatar,inviteCode:genCode(),invitedBy:inv||null,createdAt:serverTimestamp()})
+      await setDoc(doc(db,'users',user.uid),{displayName:name.trim(),email:email.toLowerCase(),inviteCode:genCode(),invitedBy:inv||null,createdAt:serverTimestamp()})
     }catch(e){setErr(e.code==='auth/email-already-in-use'?'E-Mail bereits registriert':e.message);setLoading(false)}
   }
   return (
@@ -1101,7 +1105,6 @@ function RegisterForm({onSwitch}) {
       <div className="field"><label>E-Mail</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@email.com"/></div>
       <div className="field"><label>Passwort</label><div className="pw-wrap"><input type={showPw?'text':'password'} value={pw} onChange={e=>setPw(e.target.value)} placeholder="Min. 6 Zeichen"/><button type="button" className="pw-eye" onClick={()=>setShowPw(v=>!v)}><Eye show={showPw}/></button></div></div>
       <div className="field"><label>Bestätigen</label><div className="pw-wrap"><input type={showPw2?'text':'password'} value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Wiederholen"/><button type="button" className="pw-eye" onClick={()=>setShowPw2(v=>!v)}><Eye show={showPw2}/></button></div></div>
-      <div className="field"><label>Avatar</label><div className="avatar-grid">{AVATARS.map(a=><button key={a} type="button" className={`avatar-btn${avatar===a?' selected':''}`} onClick={()=>setAvatar(a)}>{a}</button>)}</div></div>
       {email.toLowerCase()!==ADMIN_EMAIL&&<div className="field"><label>Einladungscode</label><input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6}/></div>}
       {err&&<p className="err">{err}</p>}
       <button className="btn" type="submit" disabled={loading}>{loading?'Wird registriert…':'Registrieren'}</button>
@@ -1169,7 +1172,7 @@ export default function App() {
     {id:'tippen',    icon:'🎯', label:'Tippen'},
     {id:'tabelle',   icon:'📊', label:'Tabelle'},
     {id:'rangliste', icon:'🏆', label:'Liga'},
-    {id:'profil',    icon:profile?.avatar||'👤', label:profile?.displayName?.split(' ')[0]||'Profil'},
+    {id:'profil',    icon:null, label:profile?.displayName?.split(' ')[0]||'Profil'},
     ...(isAdmin?[{id:'admin',icon:'⚙️',label:'Admin'}]:[]),
   ]
   return (
@@ -1188,7 +1191,7 @@ export default function App() {
       <nav className="bottom-nav">
         {navItems.map(n=>(
           <button key={n.id} className={`nav-btn${tab===n.id?' active':''}`} onClick={()=>setTab(n.id)}>
-            <span className="nav-icon">{n.icon}</span>
+            <span className="nav-icon">{n.id==='profil'?<InitialsAvatar name={profile?.displayName||'?'} size={24}/>:n.icon}</span>
             <span>{n.label}</span>
           </button>
         ))}
