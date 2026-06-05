@@ -927,6 +927,10 @@ function ProfilTab({user, profile, onProfileUpdate}) {
           <button className="save-btn" onClick={changePw}>Passwort ändern</button>
         </div>
       </div>
+      <div className="profile-section">
+        <h3>Freunde einladen</h3>
+        <EinladenTab profile={profile}/>
+      </div>
     </div>
   )
 }
@@ -939,7 +943,6 @@ function EinladenTab({profile}) {
   function copy(){navigator.clipboard.writeText(url);setCopied(true);setTimeout(()=>setCopied(false),2000)}
   return (
     <div>
-      <div className="section-title">📨 Einladen</div>
       <div className="invite-code-box">
         <div className="invite-code">{code}</div>
         <div className="invite-url">{url}</div>
