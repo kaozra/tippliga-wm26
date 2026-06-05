@@ -1308,7 +1308,7 @@ function LoginForm({onSwitch}) {
 // ── ROOT ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [authUser,setAuthUser]=useState(undefined), [profile,setProfile]=useState(null), [results,setResults]=useState({})
-  const [tab,setTab]=useState('tippen'), [authMode,setAuthMode]=useState('login')
+  const [tab,setTab]=useState(()=>localStorage.getItem('activeTab')||'tippen'), [authMode,setAuthMode]=useState('login')
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async u=>{
       setAuthUser(u)
@@ -1339,6 +1339,8 @@ export default function App() {
     </div>
   )
   const isAdmin=authUser.email?.toLowerCase()===ADMIN_EMAIL
+  useEffect(()=>{ localStorage.setItem('activeTab',tab) },[tab])
+  useEffect(()=>{ if(tab==='admin'&&!isAdmin) setTab('tippen') },[tab,isAdmin])
   const navItems=[
     {id:'tippen',    icon:'🎯', label:'Tippen'},
     {id:'tabelle',   icon:'📊', label:'Tabelle'},
