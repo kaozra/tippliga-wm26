@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Crosshair, Star, Flame, Skull, PenLine, Sun, Moon } from 'lucide-react'
+import { Crosshair, Star, Flame, Skull, PenLine, Sun, Moon, Download, Share } from 'lucide-react'
 import { initializeApp } from 'firebase/app'
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -1592,6 +1592,22 @@ export default function App() {
   const [tab,setTab]=useState(()=>localStorage.getItem('activeTab')||'tippen'), [authMode,setAuthMode]=useState('login')
   const [theme,setTheme]=useState(()=>localStorage.getItem('theme')||'dark')
   useEffect(()=>{ document.documentElement.setAttribute('data-theme',theme); localStorage.setItem('theme',theme) },[theme])
+  const [installPrompt,setInstallPrompt]=useState(null)
+  const [showIosHint,setShowIosHint]=useState(false)
+  const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent)
+  const isStandalone=window.matchMedia('(display-mode: standalone)').matches
+  useEffect(()=>{
+    const handler=e=>{ e.preventDefault(); setInstallPrompt(e) }
+    window.addEventListener('beforeinstallprompt',handler)
+    return()=>window.removeEventListener('beforeinstallprompt',handler)
+  },[])
+  async function handleInstall(){
+    if(isIos){ setShowIosHint(v=>!v); return }
+    if(!installPrompt) return
+    installPrompt.prompt()
+    const {outcome}=await installPrompt.userChoice
+    if(outcome==='accepted') setInstallPrompt(null)
+  }
   useEffect(()=>{ localStorage.setItem('activeTab',tab) },[tab])
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async u=>{
@@ -1634,11 +1650,22 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-title">TippLiga WM26</div>
+        {!isStandalone&&(installPrompt||isIos)&&(
+          <button className="theme-btn" onClick={handleInstall} title="App installieren">
+            <Download size={18} strokeWidth={1.5}/>
+          </button>
+        )}
         <button className="theme-btn" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} title="Theme wechseln">
           {theme==='dark'?<Sun size={18} strokeWidth={1.5}/>:<Moon size={18} strokeWidth={1.5}/>}
         </button>
         <button className="logout-btn" onClick={()=>signOut(auth)} title="Abmelden">✕</button>
       </header>
+      {showIosHint&&(
+        <div className="ios-hint">
+          <Share size={14}/> Tippe auf <strong>Teilen</strong> → <strong>Zum Home-Bildschirm</strong>
+          <button onClick={()=>setShowIosHint(false)}>✕</button>
+        </div>
+      )}
       <div className="app-content">
         {tab==='tippen'    && <TippenTab uid={authUser.uid} results={results}/>}
         {tab==='tabelle'   && <TabelleTab results={results} onTeamClick={null}/>}
