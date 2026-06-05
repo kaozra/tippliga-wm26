@@ -427,9 +427,6 @@ function TeamModal({team, onClose, results}) {
             <span className="modal-strength" style={{color:sc}}>Stärke: {t.strength}/100</span>
           </div>
         </div>
-        <div className="modal-str-bar">
-          <div className="modal-str-fill" style={{width:`${t.strength}%`,background:sc}} />
-        </div>
         {stats.sp>0 && (
           <div className="modal-stats">
             <div className="modal-stats-title">WM-Statistik</div>
@@ -443,10 +440,10 @@ function TeamModal({team, onClose, results}) {
             </div>
           </div>
         )}
-        {info.coach && <div className="modal-coach">👨‍💼 <strong>Trainer:</strong> {info.coach}</div>}
+        {info.coach && <div className="modal-coach"><strong>Trainer:</strong> {info.coach}</div>}
         {info.players && (
           <div className="modal-players">
-            <div className="modal-players-title">⭐ Schlüsselspieler</div>
+            <div className="modal-players-title">Schlüsselspieler</div>
             <div className="players-list">
               {info.players.map(p=><span key={p} className="player-chip">{p}</span>)}
             </div>
