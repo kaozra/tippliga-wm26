@@ -1072,25 +1072,55 @@ function RanglisteTab({uid, results}) {
     return()=>{u1();u2()}
   },[])
   const board = users.map(u=>{
-    const pts=allTips.filter(t=>t.uid===u.uid).reduce((s,t)=>{
-      const r=results[t.matchId], p=r?calcPoints(t,r):0; return s+(p||0)
-    },0)
-    return{...u,pts}
+    const myTips=allTips.filter(t=>t.uid===u.uid)
+    const pts=myTips.reduce((s,t)=>{ const r=results[t.matchId],p=r?calcPoints(t,r):0; return s+(p||0) },0)
+    return{...u,pts,tipCount:myTips.length}
   }).sort((a,b)=>b.pts-a.pts)
+  const medals=['🥇','🥈','🥉']
+  const maxPts = board[0]?.pts||1
   return (
-    <div>
-      <div className="section-title">🏆 Rangliste</div>
-      <div className="rank-list">
-        {board.map((u,i)=>(
-          <div key={u.uid} className={`rank-item${u.uid===uid?' me':''}`}>
-            <div className={`rank-pos${i===0?' top1':i===1?' top2':i===2?' top3':''}`}>{i+1}</div>
-            <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={32}/>
-            <div className="rank-name">{u.displayName}{u.uid===uid?' (Du)':''}</div>
-            <div className="rank-pts-wrap"><div className="rank-pts">{u.pts}</div><div className="rank-pts-label">Pkt</div></div>
+    <div className="rangliste-wrap">
+      {board.length===0 && <div className="loading">Laden…</div>}
+      {board.length>0 && (
+        <>
+          {/* Top 3 Podium */}
+          <div className="podium">
+            {board.slice(0,Math.min(3,board.length)).map((u,i)=>(
+              <div key={u.uid} className={`podium-card rank-${i+1}${u.uid===uid?' me':''}`}>
+                <div className="podium-medal">{medals[i]}</div>
+                <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={i===0?52:44}/>
+                <div className="podium-name">{u.displayName}{u.uid===uid&&<span className="du-badge">Du</span>}</div>
+                <div className="podium-pts">{u.pts}<span className="podium-pts-lbl">Pkt</span></div>
+                <div className="podium-tips">{u.tipCount} Tipps</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div style={{marginTop:12,fontSize:11,color:'var(--muted)',textAlign:'center'}}>⭐ 3P Exakt · ✓ 2P Tendenz+Tor · ~ 1P Tendenz</div>
+          {/* Rest */}
+          {board.length>3 && (
+            <div className="rank-list">
+              {board.slice(3).map((u,i)=>{
+                const rank=i+4
+                const pct=maxPts>0?Math.round(u.pts/maxPts*100):0
+                return (
+                  <div key={u.uid} className={`rank-item${u.uid===uid?' me':''}`}>
+                    <div className="rank-pos">{rank}</div>
+                    <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={34}/>
+                    <div className="rank-info">
+                      <div className="rank-name">{u.displayName}{u.uid===uid&&<span className="du-badge">Du</span>}</div>
+                      <div className="rank-bar-wrap"><div className="rank-bar" style={{width:`${pct}%`}}/></div>
+                    </div>
+                    <div className="rank-pts-wrap">
+                      <div className="rank-pts">{u.pts}</div>
+                      <div className="rank-pts-label">{u.tipCount} Tipps</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <div className="rank-legend">⭐ 3P Exakt · ✓ 2P Tendenz+Tor · ~ 1P Tendenz</div>
+        </>
+      )}
     </div>
   )
 }
