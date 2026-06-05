@@ -3,7 +3,8 @@ import { initializeApp } from 'firebase/app'
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendEmailVerification, signOut, onAuthStateChanged, updatePassword,
-  EmailAuthProvider, reauthenticateWithCredential, updateProfile
+  EmailAuthProvider, reauthenticateWithCredential, updateProfile,
+  setPersistence, browserLocalPersistence, browserSessionPersistence
 } from 'firebase/auth'
 import {
   getFirestore, doc, setDoc, getDoc, getDocs, collection,
@@ -1027,13 +1028,20 @@ function RegisterForm({onSwitch}) {
   )
 }
 function LoginForm({onSwitch}) {
-  const [email,setEmail]=useState(''), [pw,setPw]=useState(''), [showPw,setShowPw]=useState(false), [err,setErr]=useState(''), [loading,setLoading]=useState(false)
-  async function handleLogin(e){e.preventDefault();setErr('');setLoading(true);try{await signInWithEmailAndPassword(auth,email,pw)}catch{setErr('E-Mail oder Passwort falsch');setLoading(false)}}
+  const [email,setEmail]=useState(''), [pw,setPw]=useState(''), [showPw,setShowPw]=useState(false), [keep,setKeep]=useState(false), [err,setErr]=useState(''), [loading,setLoading]=useState(false)
+  async function handleLogin(e){
+    e.preventDefault();setErr('');setLoading(true)
+    try{
+      await setPersistence(auth, keep ? browserLocalPersistence : browserSessionPersistence)
+      await signInWithEmailAndPassword(auth,email,pw)
+    }catch{setErr('E-Mail oder Passwort falsch');setLoading(false)}
+  }
   return (
-    <form className="auth-card" onSubmit={handleLogin}>
+    <form className="auth-card" onSubmit={handleLogin} autoComplete="on">
       <h2>Anmelden</h2>
-      <div className="field"><label>E-Mail</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@email.com"/></div>
-      <div className="field"><label>Passwort</label><div className="pw-wrap"><input type={showPw?'text':'password'} value={pw} onChange={e=>setPw(e.target.value)} placeholder="Passwort"/><button type="button" className="pw-eye" onClick={()=>setShowPw(v=>!v)}><Eye show={showPw}/></button></div></div>
+      <div className="field"><label>E-Mail</label><input type="email" name="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@email.com"/></div>
+      <div className="field"><label>Passwort</label><div className="pw-wrap"><input type={showPw?'text':'password'} name="password" autoComplete="current-password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Passwort"/><button type="button" className="pw-eye" onClick={()=>setShowPw(v=>!v)}><Eye show={showPw}/></button></div></div>
+      <label className="keep-login"><input type="checkbox" checked={keep} onChange={e=>setKeep(e.target.checked)}/> Angemeldet bleiben</label>
       {err&&<p className="err">{err}</p>}
       <button className="btn" type="submit" disabled={loading}>{loading?'Anmeldung…':'Anmelden'}</button>
       <div className="auth-switch">Noch kein Konto? <button type="button" onClick={onSwitch}>Registrieren</button></div>

@@ -27,6 +27,8 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-ghost{background:transparent;color:var(--gold);border:1px solid var(--dark-4);width:100%;padding:10px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;transition:border-color .2s;margin-top:8px}
 .btn-ghost:hover{border-color:var(--gold)}
+.keep-login{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);margin-bottom:14px;cursor:pointer;user-select:none}
+.keep-login input{accent-color:var(--gold);width:15px;height:15px;cursor:pointer}
 .err{color:var(--red);font-size:12px;margin-top:8px;text-align:center}
 .auth-switch{text-align:center;margin-top:16px;font-size:13px;color:var(--muted)}
 .auth-switch button{background:none;border:none;color:var(--gold);cursor:pointer;font-size:13px}
