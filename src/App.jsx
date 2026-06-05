@@ -1144,7 +1144,6 @@ function ProfilTab({user, profile, results, onProfileUpdate}) {
   }
   return (
     <div>
-      <div className="section-title">👤 Profil</div>
       <div className="profile-section">
         <h3>Meine Statistik</h3>
         <div className="profile-card">
