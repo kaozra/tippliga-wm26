@@ -164,6 +164,49 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .players-list{display:flex;flex-wrap:wrap;gap:6px}
 .player-chip{background:var(--dark-3);border:1px solid var(--dark-4);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text)}
 
+/* ── TAB SWITCHER ── */
+.tab-switcher{display:flex;gap:0;margin-bottom:14px;background:var(--dark-3);border-radius:var(--radius);padding:3px}
+.tab-sw-btn{flex:1;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 4px;border-radius:8px;cursor:pointer;transition:all .2s}
+.tab-sw-btn.active{background:var(--gold);color:#000}
+
+/* ── SORT BAR ── */
+.sort-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.sort-bar::-webkit-scrollbar{display:none}
+
+/* ── TABELLE GROUP BLOCK ── */
+.tabelle-group-block{margin-bottom:20px}
+.tabelle-group-header{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--dark-3);border:1px solid var(--dark-4);border-radius:var(--radius) var(--radius) 0 0}
+.tabelle-group-title{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text);letter-spacing:1px}
+.tabelle-group-flags{display:flex;gap:5px;margin-left:auto}
+.tabelle-mini-flag{width:20px;height:14px;object-fit:cover;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.tabelle-group-block .group-table{border-top:none;border-radius:0}
+.tabelle-group-block .gt-legend{border-radius:0}
+
+/* ── MATCH SUMMARY IN TABELLE ── */
+.tabelle-match-summary{border:1px solid var(--dark-4);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden}
+.tabelle-match-row{display:grid;grid-template-columns:42px 1fr 52px 1fr;align-items:center;gap:4px;padding:6px 10px;border-top:1px solid var(--dark-4);font-size:11px;background:var(--dark-2)}
+.tabelle-match-row:first-child{border-top:none}
+.tms-date{color:var(--muted);font-size:10px;flex-shrink:0}
+.tms-home{text-align:right;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tms-away{text-align:left;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tms-score{text-align:center;font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--gold);letter-spacing:1px;flex-shrink:0}
+
+/* ── TOURNAMENT TABLE ── */
+.tournament-table{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius);overflow:hidden}
+.tt-head{display:grid;grid-template-columns:24px 22px 1fr 26px 24px 26px 24px 24px 44px 34px 34px;align-items:center;gap:2px;padding:7px 8px;background:var(--dark-3);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.tt-row{display:grid;grid-template-columns:24px 22px 1fr 26px 24px 26px 24px 24px 44px 34px 34px;align-items:center;gap:2px;padding:7px 8px;border-top:1px solid var(--dark-4);font-size:12px;cursor:pointer;transition:background .15s}
+.tt-row:hover{background:var(--dark-3)}
+.tt-c{text-align:center;overflow:hidden}
+.tt-pos-n{font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--muted)}
+.tt-flag{width:18px;height:12px;object-fit:cover;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.tt-name{text-align:left;font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tt-grp{text-align:center}
+.grp-pill{background:var(--dark-4);color:var(--muted);font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
+.tt-s{color:var(--green);font-weight:700}
+.tt-n{color:var(--red)}
+.tt-goals{font-size:10px;white-space:nowrap}
+.tt-pts-val{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold)}
+
 /* ── RANGLISTE ── */
 .rank-list{display:flex;flex-direction:column;gap:7px}
 .rank-item{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius);padding:11px 14px;display:grid;grid-template-columns:28px 28px 1fr auto;align-items:center;gap:10px}

@@ -697,6 +697,136 @@ function TippenTab({uid, results}) {
   )
 }
 
+// ── TABELLE TAB ───────────────────────────────────────────────────────────────
+const SORT_OPTIONS = [
+  { id:'pts',  label:'Meiste Punkte' },
+  { id:'gf',   label:'Meiste Tore' },
+  { id:'ga',   label:'Wenigste Gegentore' },
+  { id:'gd',   label:'Beste Tordifferenz' },
+  { id:'s',    label:'Meiste Siege' },
+  { id:'sp',   label:'Meiste Spiele' },
+]
+
+function TabelleTab({ results, onTeamClick }) {
+  const [view, setView] = useState('groups')   // 'groups' | 'turnier'
+  const [sortBy, setSortBy] = useState('pts')
+
+  // All 48 teams across all groups
+  const allTeams = Object.keys(GROUPS).flatMap(g =>
+    calcStandings(g, results).map(t => ({ ...t, group: g }))
+  )
+
+  const sorted = [...allTeams].sort((a, b) => {
+    if (sortBy === 'pts') return b.pts - a.pts || b.gd - a.gd || b.gf - a.gf
+    if (sortBy === 'gf')  return b.gf - a.gf   || b.pts - a.pts
+    if (sortBy === 'ga')  return a.ga - b.ga   || b.pts - a.pts
+    if (sortBy === 'gd')  return b.gd - a.gd   || b.pts - a.pts
+    if (sortBy === 's')   return b.s - a.s     || b.pts - a.pts
+    if (sortBy === 'sp')  return b.sp - a.sp   || b.pts - a.pts
+    return 0
+  })
+
+  return (
+    <div>
+      {/* View switcher */}
+      <div className="tab-switcher">
+        <button className={`tab-sw-btn${view==='groups'?' active':''}`} onClick={()=>setView('groups')}>Gruppen A–L</button>
+        <button className={`tab-sw-btn${view==='turnier'?' active':''}`} onClick={()=>setView('turnier')}>Turnier-Ranking</button>
+      </div>
+
+      {/* ALL GROUPS */}
+      {view==='groups' && (
+        <div>
+          {Object.keys(GROUPS).map(g => (
+            <div key={g} className="tabelle-group-block">
+              <div className="tabelle-group-header">
+                <span className="group-tag">{g}</span>
+                <span className="tabelle-group-title">Gruppe {g}</span>
+                <div className="tabelle-group-flags">
+                  {GROUPS[g].map(t => TEAMS[t]?.code &&
+                    <img key={t} src={flagUrl(TEAMS[t].code)} className="tabelle-mini-flag" alt={t} title={t} />
+                  )}
+                </div>
+              </div>
+              <GroupTable group={g} results={results} onTeamClick={onTeamClick||(() => {})} />
+              {/* Matches summary for this group */}
+              <div className="tabelle-match-summary">
+                {MATCHES.filter(m=>m.group===g).map(m => {
+                  const r = results[m.id]
+                  return (
+                    <div key={m.id} className="tabelle-match-row">
+                      <span className="tms-date">{m.date.slice(0,5)}</span>
+                      <span className="tms-home">{m.home}</span>
+                      <span className="tms-score">
+                        {r&&r.homeGoals!=null ? `${r.homeGoals}:${r.awayGoals}` : `${m.time}`}
+                      </span>
+                      <span className="tms-away">{m.away}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* TOURNAMENT RANKING */}
+      {view==='turnier' && (
+        <div>
+          <div className="sort-bar">
+            {SORT_OPTIONS.map(o => (
+              <button key={o.id} className={`filter-btn${sortBy===o.id?' active':''}`} onClick={()=>setSortBy(o.id)}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <div className="tournament-table">
+            <div className="tt-head">
+              <span className="tt-c tt-pos">#</span>
+              <span className="tt-c tt-flag-h"></span>
+              <span className="tt-c tt-name-h">Mannschaft</span>
+              <span className="tt-c">Gr</span>
+              <span className="tt-c">Sp</span>
+              <span className="tt-c tt-s">S</span>
+              <span className="tt-c">U</span>
+              <span className="tt-c tt-n">N</span>
+              <span className="tt-c">Tore</span>
+              <span className="tt-c">+/-</span>
+              <span className="tt-c tt-pts-h">Pkt</span>
+            </div>
+            {sorted.map((t, i) => {
+              const td = TEAMS[t.name]
+              const sc = strengthColor(td?.strength||0)
+              return (
+                <div key={t.name} className="tt-row" onClick={()=>onTeamClick&&onTeamClick(t.name)}>
+                  <span className="tt-c tt-pos tt-pos-n">{i+1}</span>
+                  <span className="tt-c">
+                    {td?.code && <img src={flagUrl(td.code)} className="tt-flag" alt={t.name} />}
+                  </span>
+                  <span className="tt-c tt-name">{t.name}</span>
+                  <span className="tt-c tt-grp"><span className="grp-pill">{t.group}</span></span>
+                  <span className="tt-c">{t.sp}</span>
+                  <span className="tt-c tt-s">{t.s}</span>
+                  <span className="tt-c">{t.u}</span>
+                  <span className="tt-c tt-n">{t.n}</span>
+                  <span className="tt-c tt-goals">{t.gf}:{t.ga}</span>
+                  <span className="tt-c" style={{color:t.gd>0?'var(--green)':t.gd<0?'var(--red)':'var(--muted)',fontWeight:700,fontSize:11}}>
+                    {t.gd>0?'+':''}{t.gd}
+                  </span>
+                  <span className="tt-c tt-pts-val">{t.pts}</span>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{fontSize:10,color:'var(--muted)',marginTop:8,textAlign:'center'}}>
+            Klick auf eine Mannschaft für Details
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── RANGLISTE ─────────────────────────────────────────────────────────────────
 function RanglisteTab({uid, results}) {
   const [users, setUsers] = useState([])
@@ -930,9 +1060,9 @@ export default function App() {
   const isAdmin=authUser.email?.toLowerCase()===ADMIN_EMAIL
   const navItems=[
     {id:'tippen',    icon:'🎯', label:'Tippen'},
-    {id:'rangliste', icon:'🏆', label:'Rangliste'},
-    {id:'profil',    icon:profile?.avatar||'👤', label:profile?.displayName?.split(' ')[0]||'Profil', isProfile:true},
-    {id:'einladen',  icon:'📨', label:'Einladen'},
+    {id:'tabelle',   icon:'📊', label:'Tabelle'},
+    {id:'rangliste', icon:'🏆', label:'Liga'},
+    {id:'profil',    icon:profile?.avatar||'👤', label:profile?.displayName?.split(' ')[0]||'Profil'},
     ...(isAdmin?[{id:'admin',icon:'⚙️',label:'Admin'}]:[]),
   ]
   return (
@@ -943,9 +1073,9 @@ export default function App() {
       </header>
       <div className="app-content">
         {tab==='tippen'    && <TippenTab uid={authUser.uid} results={results}/>}
+        {tab==='tabelle'   && <TabelleTab results={results} onTeamClick={null}/>}
         {tab==='rangliste' && <RanglisteTab uid={authUser.uid} results={results}/>}
         {tab==='profil'    && <ProfilTab user={authUser} profile={profile} onProfileUpdate={p=>setProfile(prev=>({...prev,...p}))}/>}
-        {tab==='einladen'  && <EinladenTab profile={profile}/>}
         {tab==='admin'&&isAdmin && <AdminTab results={results}/>}
       </div>
       <nav className="bottom-nav">
