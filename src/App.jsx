@@ -30,67 +30,60 @@ function genCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
 }
 
+// ISO 3166-1 alpha-2 codes for flagcdn.com SVGs
 const TEAMS = {
-  // Gruppe A
-  'Mexiko':              { flag: '🇲🇽', strength: 79 },
-  'Südafrika':           { flag: '🇿🇦', strength: 61 },
-  'Südkorea':            { flag: '🇰🇷', strength: 74 },
-  'Tschechien':          { flag: '🇨🇿', strength: 72 },
-  // Gruppe B
-  'Kanada':              { flag: '🇨🇦', strength: 76 },
-  'Bosnien-Herzegowina': { flag: '🇧🇦', strength: 67 },
-  'Katar':               { flag: '🇶🇦', strength: 60 },
-  'Schweiz':             { flag: '🇨🇭', strength: 81 },
-  // Gruppe C
-  'Brasilien':           { flag: '🇧🇷', strength: 87 },
-  'Marokko':             { flag: '🇲🇦', strength: 78 },
-  'Haiti':               { flag: '🇭🇹', strength: 52 },
-  'Schottland':          { flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', strength: 71 },
-  // Gruppe D
-  'USA':                 { flag: '🇺🇸', strength: 78 },
-  'Paraguay':            { flag: '🇵🇾', strength: 67 },
-  'Australien':          { flag: '🇦🇺', strength: 73 },
-  'Türkei':              { flag: '🇹🇷', strength: 76 },
-  // Gruppe E
-  'Deutschland':         { flag: '🇩🇪', strength: 85 },
-  'Curaçao':             { flag: '🇨🇼', strength: 48 },
-  'Elfenbeinküste':      { flag: '🇨🇮', strength: 71 },
-  'Ecuador':             { flag: '🇪🇨', strength: 72 },
-  // Gruppe F
-  'Niederlande':         { flag: '🇳🇱', strength: 83 },
-  'Japan':               { flag: '🇯🇵', strength: 77 },
-  'Schweden':            { flag: '🇸🇪', strength: 75 },
-  'Tunesien':            { flag: '🇹🇳', strength: 66 },
-  // Gruppe G
-  'Belgien':             { flag: '🇧🇪', strength: 80 },
-  'Ägypten':             { flag: '🇪🇬', strength: 70 },
-  'Iran':                { flag: '🇮🇷', strength: 70 },
-  'Neuseeland':          { flag: '🇳🇿', strength: 59 },
-  // Gruppe H
-  'Spanien':             { flag: '🇪🇸', strength: 87 },
-  'Kap Verde':           { flag: '🇨🇻', strength: 58 },
-  'Saudi-Arabien':       { flag: '🇸🇦', strength: 69 },
-  'Uruguay':             { flag: '🇺🇾', strength: 79 },
-  // Gruppe I
-  'Frankreich':          { flag: '🇫🇷', strength: 90 },
-  'Senegal':             { flag: '🇸🇳', strength: 75 },
-  'Irak':                { flag: '🇮🇶', strength: 60 },
-  'Norwegen':            { flag: '🇳🇴', strength: 76 },
-  // Gruppe J
-  'Argentinien':         { flag: '🇦🇷', strength: 93 },
-  'Algerien':            { flag: '🇩🇿', strength: 69 },
-  'Österreich':          { flag: '🇦🇹', strength: 74 },
-  'Jordanien':           { flag: '🇯🇴', strength: 61 },
-  // Gruppe K
-  'Portugal':            { flag: '🇵🇹', strength: 88 },
-  'DR Kongo':            { flag: '🇨🇩', strength: 64 },
-  'Usbekistan':          { flag: '🇺🇿', strength: 59 },
-  'Kolumbien':           { flag: '🇨🇴', strength: 80 },
-  // Gruppe L
-  'England':             { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', strength: 86 },
-  'Kroatien':            { flag: '🇭🇷', strength: 78 },
-  'Ghana':               { flag: '🇬🇭', strength: 65 },
-  'Panama':              { flag: '🇵🇦', strength: 62 },
+  'Mexiko':              { code: 'mx', strength: 79 },
+  'Südafrika':           { code: 'za', strength: 61 },
+  'Südkorea':            { code: 'kr', strength: 74 },
+  'Tschechien':          { code: 'cz', strength: 72 },
+  'Kanada':              { code: 'ca', strength: 76 },
+  'Bosnien-Herzegowina': { code: 'ba', strength: 67 },
+  'Katar':               { code: 'qa', strength: 60 },
+  'Schweiz':             { code: 'ch', strength: 81 },
+  'Brasilien':           { code: 'br', strength: 87 },
+  'Marokko':             { code: 'ma', strength: 78 },
+  'Haiti':               { code: 'ht', strength: 52 },
+  'Schottland':          { code: 'gb-sct', strength: 71 },
+  'USA':                 { code: 'us', strength: 78 },
+  'Paraguay':            { code: 'py', strength: 67 },
+  'Australien':          { code: 'au', strength: 73 },
+  'Türkei':              { code: 'tr', strength: 76 },
+  'Deutschland':         { code: 'de', strength: 85 },
+  'Curaçao':             { code: 'cw', strength: 48 },
+  'Elfenbeinküste':      { code: 'ci', strength: 71 },
+  'Ecuador':             { code: 'ec', strength: 72 },
+  'Niederlande':         { code: 'nl', strength: 83 },
+  'Japan':               { code: 'jp', strength: 77 },
+  'Schweden':            { code: 'se', strength: 75 },
+  'Tunesien':            { code: 'tn', strength: 66 },
+  'Belgien':             { code: 'be', strength: 80 },
+  'Ägypten':             { code: 'eg', strength: 70 },
+  'Iran':                { code: 'ir', strength: 70 },
+  'Neuseeland':          { code: 'nz', strength: 59 },
+  'Spanien':             { code: 'es', strength: 87 },
+  'Kap Verde':           { code: 'cv', strength: 58 },
+  'Saudi-Arabien':       { code: 'sa', strength: 69 },
+  'Uruguay':             { code: 'uy', strength: 79 },
+  'Frankreich':          { code: 'fr', strength: 90 },
+  'Senegal':             { code: 'sn', strength: 75 },
+  'Irak':                { code: 'iq', strength: 60 },
+  'Norwegen':            { code: 'no', strength: 76 },
+  'Argentinien':         { code: 'ar', strength: 93 },
+  'Algerien':            { code: 'dz', strength: 69 },
+  'Österreich':          { code: 'at', strength: 74 },
+  'Jordanien':           { code: 'jo', strength: 61 },
+  'Portugal':            { code: 'pt', strength: 88 },
+  'DR Kongo':            { code: 'cd', strength: 64 },
+  'Usbekistan':          { code: 'uz', strength: 59 },
+  'Kolumbien':           { code: 'co', strength: 80 },
+  'England':             { code: 'gb-eng', strength: 86 },
+  'Kroatien':            { code: 'hr', strength: 78 },
+  'Ghana':               { code: 'gh', strength: 65 },
+  'Panama':              { code: 'pa', strength: 62 },
+}
+
+function flagUrl(code) {
+  return `https://flagcdn.com/${code}.svg`
 }
 
 function strengthColor(s) {
@@ -444,15 +437,18 @@ function TippenTab({ uid, results }) {
                   <span className="group-tag">{grp}</span>
                   <span className="group-title">Gruppe {grp}</span>
                   <div className="group-flags">
-                    {GROUPS[grp]?.map(t => (
-                      <span key={t} className="group-flag-item" title={t}>
-                        {TEAMS[t]?.flag}
-                        <span className="group-flag-name">{t}</span>
-                        <span className="group-flag-str" style={{color: strengthColor(TEAMS[t]?.strength || 0)}}>
-                          {TEAMS[t]?.strength}
+                    {GROUPS[grp]?.map(t => {
+                      const td = TEAMS[t]
+                      return (
+                        <span key={t} className="group-flag-item" title={t}>
+                          {td?.code && <img src={flagUrl(td.code)} className="group-flag-img" alt={t} loading="lazy" />}
+                          <span className="group-flag-name">{t}</span>
+                          <span className="group-flag-str" style={{color: strengthColor(td?.strength || 0)}}>
+                            {td?.strength}
+                          </span>
                         </span>
-                      </span>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
             }
@@ -467,20 +463,23 @@ function TippenTab({ uid, results }) {
 }
 
 function TeamCell({ name, align = 'left' }) {
-  const t = TEAMS[name] || { flag: '🏳️', strength: 0 }
+  const t = TEAMS[name] || { code: null, strength: 0 }
   const sc = strengthColor(t.strength)
+  const flag = t.code
+    ? <img src={flagUrl(t.code)} className="team-flag-img" alt={name} loading="lazy" />
+    : null
   return (
     <div className={`team-cell ${align}`}>
       {align === 'right' && (
         <>
           <span className="str-badge" style={{ background: sc + '22', color: sc, borderColor: sc + '55' }}>{t.strength}</span>
           <span className="team-cell-name">{name}</span>
-          <span className="team-cell-flag">{t.flag}</span>
+          {flag}
         </>
       )}
       {align === 'left' && (
         <>
-          <span className="team-cell-flag">{t.flag}</span>
+          {flag}
           <span className="team-cell-name">{name}</span>
           <span className="str-badge" style={{ background: sc + '22', color: sc, borderColor: sc + '55' }}>{t.strength}</span>
         </>
@@ -804,10 +803,10 @@ export default function App() {
   const isAdmin = authUser.email?.toLowerCase() === ADMIN_EMAIL
 
   const navItems = [
-    { id: 'tippen', icon: '🎯', label: 'Tippen' },
+    { id: 'tippen',    icon: '🎯', label: 'Tippen' },
     { id: 'rangliste', icon: '🏆', label: 'Rangliste' },
-    { id: 'profil', icon: '👤', label: 'Profil' },
-    { id: 'einladen', icon: '📨', label: 'Einladen' },
+    { id: 'profil',    icon: profile?.avatar || '👤', label: profile?.displayName?.split(' ')[0] || 'Profil', isProfile: true },
+    { id: 'einladen',  icon: '📨', label: 'Einladen' },
     ...(isAdmin ? [{ id: 'admin', icon: '⚙️', label: 'Admin' }] : []),
   ]
 
@@ -815,11 +814,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-title">TippLiga WM26</div>
-        <div className="app-user">
-          <span className="app-avatar">{profile?.avatar || '⚽'}</span>
-          <span className="app-name">{profile?.displayName || authUser.email}</span>
-          <button className="logout-btn" onClick={() => signOut(auth)} title="Abmelden">✕</button>
-        </div>
+        <button className="logout-btn" onClick={() => signOut(auth)} title="Abmelden">✕</button>
       </header>
 
       <div className="app-content">
