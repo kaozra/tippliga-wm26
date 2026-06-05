@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Crosshair, Star, Flame, Skull, PenLine } from 'lucide-react'
 import { initializeApp } from 'firebase/app'
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -1274,11 +1275,11 @@ function RanglisteTab({uid, results}) {
     })
     const best=(key,min=0)=>{ const s=[...stats].sort((a,b)=>b[key]-a[key]); return s[0]?.[key]>=min?s[0]:null }
     const list=[]
-    const sh=best('quote',.01); if(sh) list.push({icon:'🎯',title:'Scharfschütze',desc:'Beste Trefferquote',user:sh})
-    const ex=best('exact',1);   if(ex) list.push({icon:'⭐',title:'Exaktester',desc:'Meiste exakte Treffer',user:ex})
-    const fi=best('cur',1);     if(fi) list.push({icon:'🔥',title:'On Fire',desc:'Längste aktuelle Serie',user:fi})
-    const pb=best('zeros',1);   if(pb) list.push({icon:'💀',title:'Pechvogel',desc:'Meiste Nieten',user:pb})
-    const fl=best('tipCount',1);if(fl) list.push({icon:'✍️',title:'Fleissigster',desc:'Meiste Tipps abgegeben',user:fl})
+    const sh=best('quote',.01); if(sh) list.push({icon:<Crosshair size={18} strokeWidth={1.5}/>,title:'Scharfschütze',desc:'Beste Trefferquote',user:sh})
+    const ex=best('exact',1);   if(ex) list.push({icon:<Star size={18} strokeWidth={1.5}/>,title:'Exaktester',desc:'Meiste exakte Treffer',user:ex})
+    const fi=best('cur',1);     if(fi) list.push({icon:<Flame size={18} strokeWidth={1.5}/>,title:'On Fire',desc:'Längste aktuelle Serie',user:fi})
+    const pb=best('zeros',1);   if(pb) list.push({icon:<Skull size={18} strokeWidth={1.5}/>,title:'Pechvogel',desc:'Meiste Nieten',user:pb})
+    const fl=best('tipCount',1);if(fl) list.push({icon:<PenLine size={18} strokeWidth={1.5}/>,title:'Fleissigster',desc:'Meiste Tipps abgegeben',user:fl})
     return list
   })()
 
