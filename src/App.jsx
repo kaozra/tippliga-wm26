@@ -25,13 +25,23 @@ const auth = getAuth(fbApp)
 const db = getFirestore(fbApp)
 
 const ADMIN_EMAIL = 'kaozra@hotmail.com'
-const AVATAR_COLORS = ['#E63946','#F4A261','#2A9D8F','#457B9D','#9B5DE5','#F72585','#4CC9F0','#06D6A0','#FB8500','#8338EC']
+const AVATAR_GRADIENTS = [
+  ['#E63946','#9B1D24'],['#F4A261','#C1622A'],['#2A9D8F','#1A6B60'],
+  ['#457B9D','#1D4E70'],['#9B5DE5','#5E1FA8'],['#F72585','#A0005A'],
+  ['#4CC9F0','#1A7FA8'],['#06D6A0','#047A5C'],['#FB8500','#A85500'],['#8338EC','#4A0FAD']
+]
 function InitialsAvatar({name, uid, size=36}) {
   const n = name||'?'
   const initials = n.trim().split(/\s+/).map(w=>w[0]?.toUpperCase()||'').slice(0,2).join('')||'?'
   const seed = uid||n
-  const color = AVATAR_COLORS[[...seed].reduce((s,c)=>s+c.charCodeAt(0),0) % AVATAR_COLORS.length]
-  return <div className="initials-avatar" style={{width:size,height:size,minWidth:size,background:color,fontSize:Math.round(size*0.38)}}>{initials}</div>
+  const idx = [...seed].reduce((s,c)=>s+c.charCodeAt(0),0) % AVATAR_GRADIENTS.length
+  const [c1,c2] = AVATAR_GRADIENTS[idx]
+  return (
+    <div className="initials-avatar" style={{
+      width:size, height:size, minWidth:size, fontSize:Math.round(size*0.38),
+      background:`linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`,
+    }}>{initials}</div>
+  )
 }
 function genCode() { return Math.random().toString(36).substring(2, 8).toUpperCase() }
 function flagUrl(code) { return `https://flagcdn.com/${code}.svg` }

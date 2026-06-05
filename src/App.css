@@ -32,7 +32,7 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .err{color:var(--red);font-size:12px;margin-top:8px;text-align:center}
 .auth-switch{text-align:center;margin-top:16px;font-size:13px;color:var(--muted)}
 .auth-switch button{background:none;border:none;color:var(--gold);cursor:pointer;font-size:13px}
-.initials-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-family:'DM Sans',sans-serif;letter-spacing:.5px;flex-shrink:0}
+.initials-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-family:'DM Sans',sans-serif;letter-spacing:.5px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.2);text-shadow:0 1px 3px rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.12)}
 .verify-wrap{text-align:center;padding:40px 20px;max-width:380px;margin:0 auto}
 .verify-wrap h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);margin-bottom:12px}
 .verify-wrap p{color:var(--text-dim);font-size:14px;line-height:1.6;margin-bottom:20px}
