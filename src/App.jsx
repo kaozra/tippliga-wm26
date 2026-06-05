@@ -959,21 +959,19 @@ function ProfilTab({user, profile, results, onProfileUpdate}) {
   return (
     <div>
       <div className="section-title">👤 Profil</div>
-      {playedMatches.length>0 && (
-        <div className="profile-section">
-          <h3>Meine Statistik</h3>
-          <div className="profile-card">
-            <div className="my-stats-grid">
-              <div className="my-stat"><div className="my-stat-val">{pts}<span className="my-stat-max">/{maxPts}</span></div><div className="my-stat-lbl">Punkte</div></div>
-              <div className="my-stat"><div className="my-stat-val">{quote}<span className="my-stat-max">%</span></div><div className="my-stat-lbl">Tipp-Quote</div></div>
-              <div className="my-stat"><div className="my-stat-val">{exact}</div><div className="my-stat-lbl">Exakt (3P)</div></div>
-              <div className="my-stat"><div className="my-stat-val">{tippedPlayed.length}<span className="my-stat-max">/{playedMatches.length}</span></div><div className="my-stat-lbl">Getippt</div></div>
-              <div className="my-stat"><div className="my-stat-val">{streak}</div><div className="my-stat-lbl">Aktuelle Serie</div></div>
-              <div className="my-stat"><div className="my-stat-val">{rank>0?`#${rank}`:'–'}</div><div className="my-stat-lbl">Rang</div></div>
-            </div>
+      <div className="profile-section">
+        <h3>Meine Statistik</h3>
+        <div className="profile-card">
+          <div className="my-stats-grid">
+            <div className="my-stat"><div className="my-stat-val">{pts}<span className="my-stat-max">/{maxPts}</span></div><div className="my-stat-lbl">Punkte</div></div>
+            <div className="my-stat"><div className="my-stat-val">{quote}<span className="my-stat-max">%</span></div><div className="my-stat-lbl">Tipp-Quote</div></div>
+            <div className="my-stat"><div className="my-stat-val">{exact}</div><div className="my-stat-lbl">Exakt (3P)</div></div>
+            <div className="my-stat"><div className="my-stat-val">{tippedPlayed.length}<span className="my-stat-max">/{playedMatches.length}</span></div><div className="my-stat-lbl">Getippt</div></div>
+            <div className="my-stat"><div className="my-stat-val">{streak}</div><div className="my-stat-lbl">Aktuelle Serie</div></div>
+            <div className="my-stat"><div className="my-stat-val">{rank>0?`#${rank}`:'–'}</div><div className="my-stat-lbl">Rang</div></div>
           </div>
         </div>
-      )}
+      </div>
       <div className="profile-section">
         <h3>Avatar & Name</h3>
         <div className="profile-card">
