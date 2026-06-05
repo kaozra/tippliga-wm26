@@ -26,10 +26,11 @@ const db = getFirestore(fbApp)
 
 const ADMIN_EMAIL = 'kaozra@hotmail.com'
 const AVATAR_COLORS = ['#E63946','#F4A261','#2A9D8F','#457B9D','#9B5DE5','#F72585','#4CC9F0','#06D6A0','#FB8500','#8338EC']
-function InitialsAvatar({name, size=36}) {
+function InitialsAvatar({name, uid, size=36}) {
   const n = name||'?'
   const initials = n.trim().split(/\s+/).map(w=>w[0]?.toUpperCase()||'').slice(0,2).join('')||'?'
-  const color = AVATAR_COLORS[[...n].reduce((s,c)=>s+c.charCodeAt(0),0) % AVATAR_COLORS.length]
+  const seed = uid||n
+  const color = AVATAR_COLORS[[...seed].reduce((s,c)=>s+c.charCodeAt(0),0) % AVATAR_COLORS.length]
   return <div className="initials-avatar" style={{width:size,height:size,minWidth:size,background:color,fontSize:Math.round(size*0.38)}}>{initials}</div>
 }
 function genCode() { return Math.random().toString(36).substring(2, 8).toUpperCase() }
@@ -903,7 +904,7 @@ function RanglisteTab({uid, results}) {
         {board.map((u,i)=>(
           <div key={u.uid} className={`rank-item${u.uid===uid?' me':''}`}>
             <div className={`rank-pos${i===0?' top1':i===1?' top2':i===2?' top3':''}`}>{i+1}</div>
-            <InitialsAvatar name={u.displayName||'?'} size={32}/>
+            <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={32}/>
             <div className="rank-name">{u.displayName}{u.uid===uid?' (Du)':''}</div>
             <div className="rank-pts-wrap"><div className="rank-pts">{u.pts}</div><div className="rank-pts-label">Pkt</div></div>
           </div>
@@ -980,7 +981,7 @@ function ProfilTab({user, profile, results, onProfileUpdate}) {
       <div className="profile-section">
         <h3>Name</h3>
         <div className="profile-card">
-          <div className="profile-avatar-big"><InitialsAvatar name={name||profile?.displayName||'?'} size={64}/></div>
+          <div className="profile-avatar-big"><InitialsAvatar name={name||profile?.displayName||'?'} uid={user.uid} size={64}/></div>
           <div className="field" style={{marginTop:12}}><label>Anzeigename</label><input value={name} onChange={e=>setName(e.target.value)} /></div>
           {msg&&<p className="success-msg">{msg}</p>}{err&&<p className="err">{err}</p>}
           <button className="save-btn" onClick={saveProfile}>Speichern</button>
@@ -1191,7 +1192,7 @@ export default function App() {
       <nav className="bottom-nav">
         {navItems.map(n=>(
           <button key={n.id} className={`nav-btn${tab===n.id?' active':''}`} onClick={()=>setTab(n.id)}>
-            <span className="nav-icon">{n.id==='profil'?<InitialsAvatar name={profile?.displayName||'?'} size={24}/>:n.icon}</span>
+            <span className="nav-icon">{n.id==='profil'?<InitialsAvatar name={profile?.displayName||'?'} uid={authUser.uid} size={24}/>:n.icon}</span>
             <span>{n.label}</span>
           </button>
         ))}
