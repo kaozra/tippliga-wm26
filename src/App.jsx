@@ -879,13 +879,37 @@ function RanglisteTab({uid, results}) {
 }
 
 // ── PROFIL ────────────────────────────────────────────────────────────────────
-function ProfilTab({user, profile, onProfileUpdate}) {
+function ProfilTab({user, profile, results, onProfileUpdate}) {
   const [name, setName] = useState(profile?.displayName||'')
   const [avatar, setAvatar] = useState(profile?.avatar||'⚽')
   const [oldPw, setOldPw] = useState(''), [newPw, setNewPw] = useState('')
   const [showOld, setShowOld] = useState(false), [showNew, setShowNew] = useState(false)
   const [msg, setMsg] = useState(''), [err, setErr] = useState('')
+  const [myTips, setMyTips] = useState([])
+  const [allUsers, setAllUsers] = useState([])
+  const [allTips, setAllTips] = useState([])
   useEffect(()=>{setName(profile?.displayName||'');setAvatar(profile?.avatar||'⚽')},[profile])
+  useEffect(()=>{
+    const u1=onSnapshot(collection(db,'tips'),snap=>{ const all=snap.docs.map(d=>d.data()); setAllTips(all); setMyTips(all.filter(t=>t.uid===user.uid)) })
+    const u2=onSnapshot(collection(db,'users'),snap=>setAllUsers(snap.docs.map(d=>({uid:d.id,...d.data()}))))
+    return()=>{u1();u2()}
+  },[user.uid])
+
+  const playedMatches = MATCHES.filter(m=>{ const r=results[m.id]; return r&&r.homeGoals!=null })
+  const tippedPlayed = myTips.filter(t=>{ const r=results[t.matchId]; return r&&r.homeGoals!=null })
+  const pts = tippedPlayed.reduce((s,t)=>s+(calcPoints(t,results[t.matchId])||0),0)
+  const maxPts = tippedPlayed.length * 3
+  const exact = tippedPlayed.filter(t=>calcPoints(t,results[t.matchId])===3).length
+  const scored = tippedPlayed.filter(t=>(calcPoints(t,results[t.matchId])||0)>0).length
+  const quote = tippedPlayed.length>0 ? Math.round(scored/tippedPlayed.length*100) : 0
+
+  const sortedByDate = [...tippedPlayed].sort((a,b)=>{ const ma=MATCHES.find(m=>m.id===a.matchId), mb=MATCHES.find(m=>m.id===b.matchId); return (ma?.date+ma?.time||'').localeCompare(mb?.date+mb?.time||'') })
+  let streak=0, maxStreak=0, cur=0
+  sortedByDate.forEach(t=>{ const p=calcPoints(t,results[t.matchId])||0; if(p>0){cur++;maxStreak=Math.max(maxStreak,cur)}else{cur=0} })
+  streak=cur
+
+  const board = allUsers.map(u=>{ const p=allTips.filter(t=>t.uid===u.uid).reduce((s,t)=>{ const r=results[t.matchId]; return s+(r?calcPoints(t,r)||0:0) },0); return{uid:u.uid,pts:p} }).sort((a,b)=>b.pts-a.pts)
+  const rank = board.findIndex(u=>u.uid===user.uid)+1
   async function saveProfile(){
     setMsg('');setErr('')
     try{
@@ -905,6 +929,21 @@ function ProfilTab({user, profile, onProfileUpdate}) {
   return (
     <div>
       <div className="section-title">👤 Profil</div>
+      {playedMatches.length>0 && (
+        <div className="profile-section">
+          <h3>Meine Statistik</h3>
+          <div className="profile-card">
+            <div className="my-stats-grid">
+              <div className="my-stat"><div className="my-stat-val">{pts}<span className="my-stat-max">/{maxPts}</span></div><div className="my-stat-lbl">Punkte</div></div>
+              <div className="my-stat"><div className="my-stat-val">{quote}<span className="my-stat-max">%</span></div><div className="my-stat-lbl">Tipp-Quote</div></div>
+              <div className="my-stat"><div className="my-stat-val">{exact}</div><div className="my-stat-lbl">Exakt (3P)</div></div>
+              <div className="my-stat"><div className="my-stat-val">{tippedPlayed.length}<span className="my-stat-max">/{playedMatches.length}</span></div><div className="my-stat-lbl">Getippt</div></div>
+              <div className="my-stat"><div className="my-stat-val">{streak}</div><div className="my-stat-lbl">Aktuelle Serie</div></div>
+              <div className="my-stat"><div className="my-stat-val">{rank>0?`#${rank}`:'–'}</div><div className="my-stat-lbl">Rang</div></div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="profile-section">
         <h3>Avatar & Name</h3>
         <div className="profile-card">
@@ -1103,7 +1142,7 @@ export default function App() {
         {tab==='tippen'    && <TippenTab uid={authUser.uid} results={results}/>}
         {tab==='tabelle'   && <TabelleTab results={results} onTeamClick={null}/>}
         {tab==='rangliste' && <RanglisteTab uid={authUser.uid} results={results}/>}
-        {tab==='profil'    && <ProfilTab user={authUser} profile={profile} onProfileUpdate={p=>setProfile(prev=>({...prev,...p}))}/>}
+        {tab==='profil'    && <ProfilTab user={authUser} profile={profile} results={results} onProfileUpdate={p=>setProfile(prev=>({...prev,...p}))}/>}
         {tab==='admin'&&isAdmin && <AdminTab results={results}/>}
       </div>
       <nav className="bottom-nav">
