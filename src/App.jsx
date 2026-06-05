@@ -966,7 +966,7 @@ function ProfilTab({user, profile, results, onProfileUpdate}) {
             <div className="my-stat"><div className="my-stat-val">{pts}<span className="my-stat-max">/{maxPts}</span></div><div className="my-stat-lbl">Punkte</div></div>
             <div className="my-stat"><div className="my-stat-val">{quote}<span className="my-stat-max">%</span></div><div className="my-stat-lbl">Tipp-Quote</div></div>
             <div className="my-stat"><div className="my-stat-val">{exact}</div><div className="my-stat-lbl">Exakt (3P)</div></div>
-            <div className="my-stat"><div className="my-stat-val">{tippedPlayed.length}<span className="my-stat-max">/{playedMatches.length}</span></div><div className="my-stat-lbl">Getippt</div></div>
+            <div className="my-stat"><div className="my-stat-val">{myTips.length}<span className="my-stat-max">/{MATCHES.length}</span></div><div className="my-stat-lbl">Getippt</div></div>
             <div className="my-stat"><div className="my-stat-val">{streak}</div><div className="my-stat-lbl">Aktuelle Serie</div></div>
             <div className="my-stat"><div className="my-stat-val">{rank>0?`#${rank}`:'–'}</div><div className="my-stat-lbl">Rang</div></div>
           </div>
