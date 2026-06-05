@@ -326,3 +326,27 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .pst-flag{width:20px;height:14px;object-fit:cover;border-radius:2px;flex-shrink:0}
 .pst-num{width:56px;justify-content:flex-end;font-size:11px;color:var(--muted)}
 .pst-val{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text);letter-spacing:.5px}
+
+/* ── KO BRACKET ── */
+.ko-bracket{margin-top:12px}
+.bracket-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.bracket-round{flex-shrink:0;min-width:140px}
+.bracket-round-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;text-align:center}
+.bracket-round-matches{display:flex;flex-direction:column;gap:6px}
+.bracket-match{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius-sm);overflow:hidden}
+.bracket-team{display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--dark-4)}
+.bracket-team:last-child{border-bottom:none}
+.bracket-team.winner{color:var(--text);font-weight:700;background:rgba(201,168,76,.08)}
+.bracket-team.loser{opacity:.45}
+.bracket-flag{width:18px;height:12px;object-fit:cover;border-radius:2px;flex-shrink:0}
+.bracket-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bracket-score{font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--gold);flex-shrink:0}
+.bracket-p3{margin-top:12px;max-width:160px}
+
+/* ── RANGLISTEN-VERLAUF ── */
+.rang-verlauf{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius);overflow:hidden}
+.rang-verlauf-toggle{width:100%;background:none;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;font-family:'DM Sans',sans-serif;font-weight:600}
+.rang-verlauf-toggle:hover{color:var(--text)}
+.rang-verlauf-chart{padding:8px 12px 10px}
+.rang-verlauf-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.rv-legend-item{font-size:10px;font-weight:600}

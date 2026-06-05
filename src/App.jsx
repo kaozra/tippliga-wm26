@@ -892,6 +892,61 @@ function PlayerStatTable({title, icon, rows, cols}) {
   )
 }
 
+// ── KO BRACKET ────────────────────────────────────────────────────────────────
+function KoBracket({results}) {
+  const rounds = [
+    { key:'R32', label:'Sechzehntelfinale', matches: MATCHES.filter(m=>m.group==='R32') },
+    { key:'QF',  label:'Viertelfinale',     matches: MATCHES.filter(m=>m.group==='QF') },
+    { key:'SF',  label:'Halbfinale',        matches: MATCHES.filter(m=>m.group==='SF') },
+    { key:'FIN', label:'Finale',            matches: MATCHES.filter(m=>m.group==='FIN') },
+  ]
+  const p3 = MATCHES.filter(m=>m.group==='P3')
+
+  function BracketMatch({match}) {
+    const r = results[match.id]
+    const hasResult = r&&r.homeGoals!=null
+    const homeWin = hasResult && r.homeGoals>r.awayGoals
+    const awayWin = hasResult && r.awayGoals>r.homeGoals
+    const homeFlag = TEAMS[match.home]?.code
+    const awayFlag = TEAMS[match.away]?.code
+    return (
+      <div className="bracket-match">
+        <div className={`bracket-team${homeWin?' winner':awayWin?' loser':''}`}>
+          {homeFlag && <img src={flagUrl(homeFlag)} className="bracket-flag" alt=""/>}
+          <span className="bracket-name">{match.home}</span>
+          {hasResult && <span className="bracket-score">{r.homeGoals}</span>}
+        </div>
+        <div className={`bracket-team${awayWin?' winner':homeWin?' loser':''}`}>
+          {awayFlag && <img src={flagUrl(awayFlag)} className="bracket-flag" alt=""/>}
+          <span className="bracket-name">{match.away}</span>
+          {hasResult && <span className="bracket-score">{r.awayGoals}</span>}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="ko-bracket">
+      <div className="bracket-scroll">
+        {rounds.map(round=>(
+          <div key={round.key} className="bracket-round">
+            <div className="bracket-round-label">{round.label}</div>
+            <div className="bracket-round-matches">
+              {round.matches.map(m=><BracketMatch key={m.id} match={m}/>)}
+            </div>
+          </div>
+        ))}
+      </div>
+      {p3.length>0 && (
+        <div className="bracket-p3">
+          <div className="bracket-round-label">Platz 3</div>
+          {p3.map(m=><BracketMatch key={m.id} match={m}/>)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── TABELLE TAB ───────────────────────────────────────────────────────────────
 const SORT_OPTIONS = [
   { id:'pts',  label:'Meiste Punkte' },
@@ -903,7 +958,7 @@ const SORT_OPTIONS = [
 ]
 
 function TabelleTab({ results, onTeamClick }) {
-  const [view, setView] = useState('groups')   // 'groups' | 'turnier' | 'spieler'
+  const [view, setView] = useState('groups')   // 'groups' | 'turnier' | 'spieler' | 'bracket'
   const [sortBy, setSortBy] = useState('pts')
   const [playerStats, setPlayerStats] = useState(null)
   useEffect(()=>{
@@ -935,6 +990,7 @@ function TabelleTab({ results, onTeamClick }) {
         <button className={`tab-sw-btn${view==='groups'?' active':''}`} onClick={()=>setView('groups')}>Gruppen A–L</button>
         <button className={`tab-sw-btn${view==='turnier'?' active':''}`} onClick={()=>setView('turnier')}>Turnier-Ranking</button>
         <button className={`tab-sw-btn${view==='spieler'?' active':''}`} onClick={()=>setView('spieler')}>Spieler</button>
+        <button className={`tab-sw-btn${view==='bracket'?' active':''}`} onClick={()=>setView('bracket')}>Bracket</button>
       </div>
 
       {/* ALL GROUPS */}
@@ -1058,6 +1114,123 @@ function TabelleTab({ results, onTeamClick }) {
           </>}
         </div>
       )}
+
+      {/* KO BRACKET */}
+      {view==='bracket' && <KoBracket results={results}/>}
+    </div>
+  )
+}
+
+// ── USER STATS MODAL ──────────────────────────────────────────────────────────
+function UserStatsModal({user, allTips, results, board, onClose}) {
+  const myTips = allTips.filter(t=>t.uid===user.uid)
+  const tippedPlayed = myTips.filter(t=>{ const r=results[t.matchId]; return r&&r.homeGoals!=null })
+  const pts = tippedPlayed.reduce((s,t)=>s+(calcPoints(t,results[t.matchId])||0),0)
+  const maxPts = tippedPlayed.length*3
+  const exact = tippedPlayed.filter(t=>calcPoints(t,results[t.matchId])===3).length
+  const scored = tippedPlayed.filter(t=>(calcPoints(t,results[t.matchId])||0)>0).length
+  const quote = tippedPlayed.length>0?Math.round(scored/tippedPlayed.length*100):0
+  const sortedByDate = [...tippedPlayed].sort((a,b)=>{const ma=MATCHES.find(m=>m.id===a.matchId),mb=MATCHES.find(m=>m.id===b.matchId);return(ma?.date+ma?.time||'').localeCompare(mb?.date+mb?.time||'')})
+  let cur=0; sortedByDate.forEach(t=>{const p=calcPoints(t,results[t.matchId])||0;if(p>0)cur++;else cur=0})
+  const rank = board.findIndex(u=>u.uid===user.uid)+1
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e=>e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>✕</button>
+        <div className="modal-head">
+          <InitialsAvatar name={user.displayName||'?'} uid={user.uid} size={52}/>
+          <div>
+            <h2 className="modal-team-name">{user.displayName}</h2>
+            <span className="modal-strength" style={{color:'var(--gold)'}}>Rang #{rank}</span>
+          </div>
+        </div>
+        <div className="my-stats-grid">
+          <div className="my-stat"><div className="my-stat-val">{pts}<span className="my-stat-max">/{maxPts}</span></div><div className="my-stat-lbl">Punkte</div></div>
+          <div className="my-stat"><div className="my-stat-val">{quote}<span className="my-stat-max">%</span></div><div className="my-stat-lbl">Tipp-Quote</div></div>
+          <div className="my-stat"><div className="my-stat-val">{exact}</div><div className="my-stat-lbl">Exakt (3P)</div></div>
+          <div className="my-stat"><div className="my-stat-val">{myTips.length}<span className="my-stat-max">/{MATCHES.length}</span></div><div className="my-stat-lbl">Getippt</div></div>
+          <div className="my-stat"><div className="my-stat-val">{cur}</div><div className="my-stat-lbl">Aktuelle Serie</div></div>
+          <div className="my-stat"><div className="my-stat-val">#{rank}</div><div className="my-stat-lbl">Rang</div></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── RANGLISTEN-VERLAUF ────────────────────────────────────────────────────────
+function RangVerlauf({board, allTips, results}) {
+  const [open, setOpen] = useState(false)
+
+  // Played matches sorted chronologically
+  const played = MATCHES
+    .filter(m=>{ const r=results[m.id]; return r&&r.homeGoals!=null })
+    .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))
+
+  if(played.length<2) return null
+
+  // Compute rank history: for each checkpoint, cumulative pts per user → rank
+  const checkpoints = played.map((_,i)=>{
+    const subset = played.slice(0,i+1)
+    const ptsByUid = {}
+    board.forEach(u=>{ ptsByUid[u.uid]=0 })
+    allTips.forEach(t=>{
+      if(!ptsByUid.hasOwnProperty(t.uid)) return
+      const match = subset.find(m=>m.id===t.matchId)
+      if(!match) return
+      const r = results[t.matchId]
+      if(r) ptsByUid[t.uid]+=(calcPoints(t,r)||0)
+    })
+    const sorted = Object.entries(ptsByUid).sort((a,b)=>b[1]-a[1])
+    const rankMap = {}
+    sorted.forEach(([uid],i)=>{ rankMap[uid]=i+1 })
+    return rankMap
+  })
+
+  const W=320, H=140, PAD=24
+  const n = checkpoints.length
+  const userCount = board.length
+  const xStep = n>1?(W-PAD*2)/(n-1):0
+
+  function yPos(rank) { return PAD+(rank-1)/(userCount-1||1)*(H-PAD*2) }
+  function xPos(i) { return PAD+i*xStep }
+
+  const COLORS=['#FFD700','#C0C0C0','#CD7F32','#4CC9F0','#9B5DE5','#F72585','#06D6A0','#FB8500']
+
+  return (
+    <div className="rang-verlauf">
+      <button className="rang-verlauf-toggle" onClick={()=>setOpen(v=>!v)}>
+        Ranglisten-Verlauf <span className={`tips-chevron${open?' open':''}`}>›</span>
+      </button>
+      {open && (
+        <div className="rang-verlauf-chart">
+          <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto',overflow:'visible'}}>
+            {/* Grid lines */}
+            {board.map((_,i)=>(
+              <line key={i} x1={PAD} y1={yPos(i+1)} x2={W-PAD} y2={yPos(i+1)} stroke="var(--dark-4)" strokeWidth="1"/>
+            ))}
+            {/* Lines per user */}
+            {board.map((u,ui)=>{
+              const pts=checkpoints.map(cp=>cp[u.uid]||userCount)
+              const color=COLORS[ui%COLORS.length]
+              const lastRank=pts[pts.length-1]
+              return (
+                <g key={u.uid}>
+                  <polyline points={pts.map((rank,i)=>`${xPos(i)},${yPos(rank)}`).join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity=".85"/>
+                  <circle cx={xPos(pts.length-1)} cy={yPos(lastRank)} r="4" fill={color}/>
+                  <text x={xPos(pts.length-1)+6} y={yPos(lastRank)+4} fill={color} fontSize="9" fontWeight="700">{u.displayName?.split(' ')[0]}</text>
+                </g>
+              )
+            })}
+          </svg>
+          <div className="rang-verlauf-legend">
+            {board.map((u,ui)=>(
+              <span key={u.uid} className="rv-legend-item" style={{color:COLORS[ui%COLORS.length]}}>
+                ● {u.displayName?.split(' ')[0]}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1066,6 +1239,7 @@ function TabelleTab({ results, onTeamClick }) {
 function RanglisteTab({uid, results}) {
   const [users, setUsers] = useState([])
   const [allTips, setAllTips] = useState([])
+  const [selectedUser, setSelectedUser] = useState(null)
   useEffect(()=>{
     const u1=onSnapshot(collection(db,'users'),snap=>setUsers(snap.docs.map(d=>({uid:d.id,...d.data()}))))
     const u2=onSnapshot(collection(db,'tips'),snap=>setAllTips(snap.docs.map(d=>d.data())))
@@ -1086,7 +1260,7 @@ function RanglisteTab({uid, results}) {
           {/* Top 3 Podium */}
           <div className="podium">
             {board.slice(0,Math.min(3,board.length)).map((u,i)=>(
-              <div key={u.uid} className={`podium-card rank-${i+1}${u.uid===uid?' me':''}`}>
+              <div key={u.uid} className={`podium-card rank-${i+1}${u.uid===uid?' me':''}`} onClick={()=>setSelectedUser(u)}>
                 <div className="podium-medal">{medals[i]}</div>
                 <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={i===0?52:44}/>
                 <div className="podium-name">{u.displayName}{u.uid===uid&&<span className="du-badge">Du</span>}</div>
@@ -1102,7 +1276,7 @@ function RanglisteTab({uid, results}) {
                 const rank=i+4
                 const pct=maxPts>0?Math.round(u.pts/maxPts*100):0
                 return (
-                  <div key={u.uid} className={`rank-item${u.uid===uid?' me':''}`}>
+                  <div key={u.uid} className={`rank-item${u.uid===uid?' me':''}`} onClick={()=>setSelectedUser(u)}>
                     <div className="rank-pos">{rank}</div>
                     <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={34}/>
                     <div className="rank-info">
@@ -1119,8 +1293,10 @@ function RanglisteTab({uid, results}) {
             </div>
           )}
           <div className="rank-legend">⭐ 3P Exakt · ✓ 2P Tendenz+Tor · ~ 1P Tendenz</div>
+          {board.length>1 && <RangVerlauf board={board} allTips={allTips} results={results}/>}
         </>
       )}
+      {selectedUser && <UserStatsModal user={selectedUser} allTips={allTips} results={results} board={board} onClose={()=>setSelectedUser(null)}/>}
     </div>
   )
 }
