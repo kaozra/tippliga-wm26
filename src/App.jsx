@@ -1308,7 +1308,8 @@ function LoginForm({onSwitch}) {
 // ── ROOT ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [authUser,setAuthUser]=useState(undefined), [profile,setProfile]=useState(null), [results,setResults]=useState({})
-  const [tab,setTab]=useState('tippen'), [authMode,setAuthMode]=useState('login')
+  const [tab,setTab]=useState(()=>localStorage.getItem('activeTab')||'tippen'), [authMode,setAuthMode]=useState('login')
+  useEffect(()=>{ localStorage.setItem('activeTab',tab) },[tab])
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async u=>{
       setAuthUser(u)
