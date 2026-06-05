@@ -372,7 +372,7 @@ function TeamCell({name, align='left', onClick}) {
   const flag = t.code
     ? <img src={flagUrl(t.code)} className="team-flag-img" alt={name} loading="lazy" onClick={onClick} style={{cursor:'pointer'}} />
     : null
-  const badge = <span className="str-badge" style={{background:sc+'22',color:sc}}>{t.strength}</span>
+  const badge = <span className="str-badge" style={{color:sc}}>{t.strength}</span>
   const nameEl = <span className="team-cell-name" onClick={onClick} style={{cursor:'pointer'}}>{name}</span>
   return (
     <div className={`team-cell ${align}`}>
