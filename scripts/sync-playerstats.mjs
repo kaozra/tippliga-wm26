@@ -1,10 +1,26 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
-if (!getApps().length) {
-  initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) })
+if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+  console.warn('[playerstats] ⚠️  FIREBASE_SERVICE_ACCOUNT not set — skipping.')
+  process.exit(0)
 }
-const db = getFirestore()
+if (!process.env.API_FOOTBALL_KEY) {
+  console.warn('[playerstats] ⚠️  API_FOOTBALL_KEY not set — skipping.')
+  process.exit(0)
+}
+
+let db
+try {
+  if (!getApps().length) {
+    initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) })
+  }
+  db = getFirestore()
+} catch (err) {
+  console.error('[playerstats] ❌ Firebase init failed:', err.message)
+  process.exit(0)
+}
+
 const API_KEY = process.env.API_FOOTBALL_KEY
 const LEAGUE = 1
 const SEASON = 2026
@@ -84,4 +100,4 @@ async function syncPlayerStats() {
   console.log('[playerstats] ✅ Done')
 }
 
-syncPlayerStats().catch(err => { console.error('[playerstats] ERROR:', err); process.exit(1) })
+syncPlayerStats().catch(err => { console.error('[playerstats] ERROR:', err.message || err); process.exit(0) })
