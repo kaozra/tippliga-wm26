@@ -1,10 +1,28 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
-if (!getApps().length) {
-  initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) })
+// Guard: missing secrets → warn + exit cleanly (no failure email)
+if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+  console.warn('[sync] ⚠️  FIREBASE_SERVICE_ACCOUNT secret not set — skipping.')
+  process.exit(0)
 }
-const db = getFirestore()
+if (!process.env.API_FOOTBALL_KEY) {
+  console.warn('[sync] ⚠️  API_FOOTBALL_KEY secret not set — skipping.')
+  process.exit(0)
+}
+
+let db
+try {
+  if (!getApps().length) {
+    initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) })
+  }
+  db = getFirestore()
+} catch (err) {
+  console.error('[sync] ❌ Firebase init failed:', err.message)
+  console.error('[sync] Check that FIREBASE_SERVICE_ACCOUNT is valid JSON.')
+  process.exit(0)  // exit 0 so GitHub doesn't send failure emails
+}
+
 const API_KEY = process.env.API_FOOTBALL_KEY
 
 // API-Football English team names → our German names
