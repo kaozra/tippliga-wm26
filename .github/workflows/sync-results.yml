@@ -2,9 +2,9 @@ name: Sync WM 2026 Results
 
 on:
   schedule:
-    # Every 10 minutes between 16:00–06:00 UTC (= 18:00–08:00 CEST, covers all match windows)
-    - cron: '*/10 16-23 * * *'
-    - cron: '*/10 0-6  * * *'
+    # Every 3 minutes between 16:00–06:00 UTC (= 18:00–08:00 CEST, covers all match windows)
+    - cron: '*/3 16-23 * * *'
+    - cron: '*/3 0-6  * * *'
   workflow_dispatch:  # manual trigger from GitHub UI
 
 jobs:

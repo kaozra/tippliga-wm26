@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Crosshair, Star, Flame, Skull, PenLine, Sun, Moon, Download, Share } from 'lucide-react'
+import { Crosshair, Star, Flame, Skull, PenLine, Sun, Moon, Download, Share, CalendarDays } from 'lucide-react'
 import { initializeApp } from 'firebase/app'
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -747,6 +747,94 @@ function KoView({koGroup, tips, results, now, onSave, onTeamClick, allTips=[], a
   )
 }
 
+// ── SPIELPLAN TAB ─────────────────────────────────────────────────────────────
+function SpielplanTab({ results }) {
+  const [now, setNow] = useState(new Date())
+  useEffect(() => { const id = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(id) }, [])
+
+  function dateStr(d) { return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}` }
+  function fmtDay(s) {
+    const [d,m,y]=s.split('.'), dt=new Date(+y,+m-1,+d)
+    const dn=['So','Mo','Di','Mi','Do','Fr','Sa'], mn=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez']
+    return `${dn[dt.getDay()]}, ${d}. ${mn[+m-1]}.`
+  }
+
+  const todayStr = dateStr(now)
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  const allDates = [...new Set(MATCHES.map(m=>m.date))].sort((a,b)=>{
+    const [da,ma,ya]=a.split('.'), [db,mb,yb]=b.split('.')
+    return new Date(+ya,+ma-1,+da)-new Date(+yb,+mb-1,+db)
+  })
+
+  const upcomingDates = allDates.filter(s => {
+    const [d,m,y]=s.split('.'); return new Date(+y,+m-1,+d) >= todayMidnight
+  }).slice(0, 7)
+
+  const recentDates = allDates.filter(s => {
+    const [d,m,y]=s.split('.'); const dt=new Date(+y,+m-1,+d)
+    return dt < todayMidnight && dt >= new Date(todayMidnight.getTime()-3*86400000)
+  }).reverse().slice(0,2)
+
+  function SpRow({ m }) {
+    const r = results[m.id]
+    const kickoff = parseMatchDate(m)
+    const isLive = now>=kickoff && now<=new Date(kickoff.getTime()+115*60*1000)
+    const isDone = r && r.homeGoals!=null
+    const isKo = KO_GROUPS.includes(m.group)
+    const grpLbl = isKo ? {R32:'R16',QF:'VF',SF:'HF',P3:'3.Pl',FIN:'FIN'}[m.group]||m.group : `Gr.${m.group}`
+    const homeIsReal = !!TEAMS[m.home], awayIsReal = !!TEAMS[m.away]
+    return (
+      <div className={`sp-row${isLive?' sp-live':isDone?' sp-done':''}`}>
+        <span className="sp-time">{isLive?<span className="sp-live-dot">●</span>:null}{isLive?'LIVE':m.time}</span>
+        <span className="sp-grp">{grpLbl}</span>
+        <span className="sp-team sp-home">
+          {homeIsReal&&TEAMS[m.home]?.code&&<img src={flagUrl(TEAMS[m.home].code)} className="sp-flag-sm" alt=""/>}
+          <span className="sp-tname">{m.home}</span>
+        </span>
+        <span className="sp-score-val">{isDone?`${r.homeGoals}:${r.awayGoals}`:isLive?`${r?.homeGoals??'?'}:${r?.awayGoals??'?'}`:'–:–'}</span>
+        <span className="sp-team sp-away">
+          <span className="sp-tname">{m.away}</span>
+          {awayIsReal&&TEAMS[m.away]?.code&&<img src={flagUrl(TEAMS[m.away].code)} className="sp-flag-sm" alt=""/>}
+        </span>
+      </div>
+    )
+  }
+
+  function DayBlock({ s, highlight }) {
+    const ms = MATCHES.filter(m=>m.date===s)
+    return (
+      <div className="sp-day-block">
+        <div className={`sp-day-hdr${highlight?' sp-today-hdr':''}`}>
+          <span className="sp-day-lbl">{fmtDay(s)}</span>
+          {highlight&&<span className="sp-today-pill">Heute</span>}
+          <span className="sp-day-cnt">{ms.length} Spiel{ms.length!==1?'e':''}</span>
+        </div>
+        {ms.map(m=><SpRow key={m.id} m={m}/>)}
+      </div>
+    )
+  }
+
+  const hasToday = upcomingDates.includes(todayStr)
+
+  return (
+    <div className="spielplan-tab">
+      {!hasToday && (
+        <div className="sp-day-block">
+          <div className="sp-day-hdr sp-today-hdr">
+            <span className="sp-day-lbl">{fmtDay(todayStr)}</span>
+            <span className="sp-today-pill">Heute</span>
+          </div>
+          <div className="sp-no-games">Keine Spiele heute</div>
+        </div>
+      )}
+      {upcomingDates.map(s=><DayBlock key={s} s={s} highlight={s===todayStr}/>)}
+      {recentDates.length>0&&<div className="sp-recent-title">Letzte Ergebnisse</div>}
+      {recentDates.map(s=><DayBlock key={s} s={s}/>)}
+    </div>
+  )
+}
+
 // ── MATCH TIPS PANEL ─────────────────────────────────────────────────────────
 function MatchTipsPanel({matchId, allTips, allUsers, result}) {
   const [open, setOpen] = useState(false)
@@ -1092,8 +1180,14 @@ function TabelleTab({ results, onTeamClick }) {
       {/* SPIELER STATS */}
       {view==='spieler' && (
         <div className="player-stats">
-          {!playerStats && <div className="loading">Noch keine Daten verfügbar</div>}
-          {playerStats && <>
+          {!playerStats && <div className="loading">Lade Statistiken…</div>}
+          {playerStats && !playerStats.topscorers?.length && (
+            <div className="sp-no-games" style={{textAlign:'center',padding:'48px 20px'}}>
+              ⚽ Spieler-Statistiken erscheinen ab dem ersten Spieltag.<br/>
+              <span style={{fontSize:12,color:'var(--muted)'}}>WM-Start: 11. Juni 2026</span>
+            </div>
+          )}
+          {playerStats && playerStats.topscorers?.length>0 && <>
             <PlayerStatTable title="Torschützenkönig" icon="⚽" rows={playerStats.topscorers||[]} cols={[
               {key:'goals', label:'Tore'},
               {key:'assists', label:'Vorlagen'},
@@ -1120,6 +1214,7 @@ function TabelleTab({ results, onTeamClick }) {
           </>}
         </div>
       )}
+
 
       {/* KO BRACKET */}
       {view==='bracket' && <KoBracket results={results}/>}
@@ -1641,6 +1736,7 @@ export default function App() {
   const isAdmin=authUser.email?.toLowerCase()===ADMIN_EMAIL
   const navItems=[
     {id:'tippen',    icon:'⚽', label:'Tippen'},
+    {id:'spielplan', icon:<CalendarDays size={20} strokeWidth={1.5}/>, label:'Spielplan'},
     {id:'tabelle',   icon:'📊', label:'Tabelle'},
     {id:'rangliste', icon:'🏆', label:'Liga'},
     {id:'profil',    icon:null, label:profile?.displayName?.split(' ')[0]||'Profil'},
@@ -1668,6 +1764,7 @@ export default function App() {
       )}
       <div className="app-content">
         {tab==='tippen'    && <TippenTab uid={authUser.uid} results={results}/>}
+        {tab==='spielplan' && <SpielplanTab results={results}/>}
         {tab==='tabelle'   && <TabelleTab results={results} onTeamClick={null}/>}
         {tab==='rangliste' && <RanglisteTab uid={authUser.uid} results={results}/>}
         {tab==='profil'    && <ProfilTab user={authUser} profile={profile} results={results} onProfileUpdate={p=>setProfile(prev=>({...prev,...p}))}/>}
