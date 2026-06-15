@@ -306,7 +306,7 @@ const MATCHES = [
   {id:'J4',group:'J',home:'Jordanien',away:'Algerien',date:'23.06.2026',time:'05:00'},
   {id:'J5',group:'J',home:'Algerien',away:'Österreich',date:'28.06.2026',time:'04:00'},
   {id:'J6',group:'J',home:'Jordanien',away:'Argentinien',date:'28.06.2026',time:'04:00'},
-  {id:'K1',group:'K',home:'Portugal',away:'DR Kongo',date:'17.06.2026',time:'19:00'},
+  {id:'K1',group:'K',home:'Portugal',away:'DR Kongo',date:'17.06.2026',time:'18:00'},
   {id:'K2',group:'K',home:'Usbekistan',away:'Kolumbien',date:'18.06.2026',time:'04:00'},
   {id:'K3',group:'K',home:'Portugal',away:'Usbekistan',date:'23.06.2026',time:'19:00'},
   {id:'K4',group:'K',home:'Kolumbien',away:'DR Kongo',date:'24.06.2026',time:'04:00'},
@@ -804,7 +804,7 @@ function SpielplanTab({ results }) {
   function DayBlock({ s, highlight }) {
     const ms = MATCHES.filter(m=>m.date===s)
     return (
-      <div className="sp-day-block">
+      <div className={`sp-day-block${highlight?' sp-today-block':''}`}>
         <div className={`sp-day-hdr${highlight?' sp-today-hdr':''}`}>
           <span className="sp-day-lbl">{fmtDay(s)}</span>
           {highlight&&<span className="sp-today-pill">Heute</span>}
@@ -820,7 +820,7 @@ function SpielplanTab({ results }) {
   return (
     <div className="spielplan-tab">
       {!hasToday && (
-        <div className="sp-day-block">
+        <div className="sp-day-block sp-today-block">
           <div className="sp-day-hdr sp-today-hdr">
             <span className="sp-day-lbl">{fmtDay(todayStr)}</span>
             <span className="sp-today-pill">Heute</span>

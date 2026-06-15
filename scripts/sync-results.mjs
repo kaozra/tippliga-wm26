@@ -115,7 +115,7 @@ const MATCHES = [
   {id:'J1',home:'Argentinien',away:'Algerien'},{id:'J2',home:'Österreich',away:'Jordanien'},
   {id:'J3',home:'Argentinien',away:'Österreich'},{id:'J4',home:'Jordanien',away:'Algerien'},
   {id:'J5',home:'Algerien',away:'Österreich'},{id:'J6',home:'Jordanien',away:'Argentinien'},
-  {id:'K1',home:'Portugal',away:'DR Kongo'},{id:'K2',home:'Usbekistan',away:'Kolumbien'},
+  {id:'K1', home:'Portugal',away:'DR Kongo'},{id:'K2',home:'Usbekistan',away:'Kolumbien'},
   {id:'K3',home:'Portugal',away:'Usbekistan'},{id:'K4',home:'Kolumbien',away:'DR Kongo'},
   {id:'K5',home:'Kolumbien',away:'Portugal'},{id:'K6',home:'DR Kongo',away:'Usbekistan'},
   {id:'L1',home:'England',away:'Kroatien'},{id:'L2',home:'Ghana',away:'Panama'},
