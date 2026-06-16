@@ -800,21 +800,32 @@ function SpielplanTab({ results }) {
     const isLive = now>=kickoff && now<=new Date(kickoff.getTime()+115*60*1000)
     const isDone = r && r.homeGoals!=null
     const isKo = KO_GROUPS.includes(m.group)
-    const grpLbl = isKo ? {R32:'R16',QF:'VF',SF:'HF',P3:'3.Pl',FIN:'FIN'}[m.group]||m.group : `Gr.${m.group}`
-    const homeIsReal = !!TEAMS[m.home], awayIsReal = !!TEAMS[m.away]
+    const grpLbl = isKo
+      ? {R32:'Achtelfinale',QF:'Viertelfinale',SF:'Halbfinale',P3:'Platz 3',FIN:'Finale'}[m.group]||m.group
+      : `Gruppe ${m.group}`
+    const homeCode = TEAMS[m.home]?.code
+    const awayCode = TEAMS[m.away]?.code
     return (
-      <div className={`sp-row${isLive?' sp-live':isDone?' sp-done':''}`}>
-        <span className="sp-time">{isLive?<span className="sp-live-dot">●</span>:null}{isLive?'LIVE':m.time}</span>
-        <span className="sp-grp">{grpLbl}</span>
-        <span className="sp-team sp-home">
-          {homeIsReal&&TEAMS[m.home]?.code&&<img src={flagUrl(TEAMS[m.home].code)} className="sp-flag-sm" alt=""/>}
-          <span className="sp-tname">{m.home}</span>
-        </span>
-        <span className="sp-score-val">{isDone?`${r.homeGoals}:${r.awayGoals}`:isLive?`${r?.homeGoals??'?'}:${r?.awayGoals??'?'}`:'–:–'}</span>
-        <span className="sp-team sp-away">
-          <span className="sp-tname">{m.away}</span>
-          {awayIsReal&&TEAMS[m.away]?.code&&<img src={flagUrl(TEAMS[m.away].code)} className="sp-flag-sm" alt=""/>}
-        </span>
+      <div className={`sp2-match${isLive?' sp2-live':isDone?' sp2-done':''}`}>
+        <div className="sp2-row">
+          <div className="sp2-home">
+            <span className="sp2-tname">{m.home}</span>
+            {homeCode && <img src={flagUrl(homeCode)} className="sp2-flag" alt=""/>}
+          </div>
+          <div className="sp2-center">
+            {isDone
+              ? <span className="sp2-score">{r.homeGoals}:{r.awayGoals}</span>
+              : isLive
+                ? <><span className="sp2-score sp2-score-live">{r?.homeGoals??0}:{r?.awayGoals??0}</span><span className="sp2-live-lbl"><span className="sp2-pulse">●</span> LIVE</span></>
+                : <span className="sp2-time">{m.time}</span>
+            }
+          </div>
+          <div className="sp2-away">
+            {awayCode && <img src={flagUrl(awayCode)} className="sp2-flag" alt=""/>}
+            <span className="sp2-tname">{m.away}</span>
+          </div>
+        </div>
+        <div className="sp2-sub">{grpLbl}</div>
       </div>
     )
   }
@@ -822,11 +833,11 @@ function SpielplanTab({ results }) {
   function DayBlock({ s, highlight }) {
     const ms = MATCHES.filter(m=>m.date===s)
     return (
-      <div className={`sp-day-block${highlight?' sp-today-block':''}`}>
-        <div className={`sp-day-hdr${highlight?' sp-today-hdr':''}`}>
-          <span className="sp-day-lbl">{fmtDay(s)}</span>
-          {highlight&&<span className="sp-today-pill">Heute</span>}
-          <span className="sp-day-cnt">{ms.length} Spiel{ms.length!==1?'e':''}</span>
+      <div className={`sp2-day${highlight?' sp2-today':''}`}>
+        <div className="sp2-day-hdr">
+          <span className="sp2-day-lbl">{fmtDay(s)}</span>
+          {highlight && <span className="sp2-today-pill">Heute</span>}
+          <span className="sp2-day-cnt">{ms.length} Spiel{ms.length!==1?'e':''}</span>
         </div>
         {ms.map(m=><SpRow key={m.id} m={m}/>)}
       </div>
@@ -838,10 +849,10 @@ function SpielplanTab({ results }) {
   return (
     <div className="spielplan-tab">
       {!hasToday && (
-        <div className="sp-day-block sp-today-block">
-          <div className="sp-day-hdr sp-today-hdr">
-            <span className="sp-day-lbl">{fmtDay(todayStr)}</span>
-            <span className="sp-today-pill">Heute</span>
+        <div className="sp2-day sp2-today">
+          <div className="sp2-day-hdr">
+            <span className="sp2-day-lbl">{fmtDay(todayStr)}</span>
+            <span className="sp2-today-pill">Heute</span>
           </div>
           <div className="sp-no-games">Keine Spiele heute</div>
         </div>
