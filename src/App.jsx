@@ -369,7 +369,7 @@ const SONDER_LOCK = new Date(2026, 5, 20, 18, 0) // 20. Juni 18:00 CEST
 const STAGE_OPTIONS = ['Vorrunde','Achtelfinale','Viertelfinale','Halbfinale','Platz 3','Finalist','Weltmeister']
 const SONDER = [
   {id:'weltmeister',   icon:'🏆', label:'Weltmeister',          desc:'Welches Team gewinnt die WM 2026?',                                   pts:9, type:'team'},
-  {id:'finalist',      icon:'🥈', label:'Finalist',             desc:'Welches Team verliert das Finale?',                                   pts:6, type:'team'},
+  {id:'finalist',      icon:'🥈', label:'Platz 2',              desc:'Welches Team verliert das Finale?',                                   pts:6, type:'team'},
   {id:'platz3',        icon:'🥉', label:'Platz 3',              desc:'Welches Team holt den 3. Platz?',                                    pts:6, type:'team'},
   {id:'topteam',       icon:'⚽', label:'Top-Torjäger-Team',    desc:'Aus welchem Team kommt der Torschützenkönig?',                       pts:6, type:'team'},
   {id:'meistetore',    icon:'🥅', label:'Meiste Turnier-Tore',  desc:'Welches Team erzielt die meisten Tore im gesamten Turnier?',          pts:6, type:'team'},
@@ -1006,7 +1006,7 @@ function SonderView({uid, now}) {
                 </select>
                 {q.id === 'finalist' && myTip.weltmeister && (
                   <div className="sonder-bracket-hint">
-                    ℹ️ Nur Teams aus der anderen Bracket-Hälfte – {myTip.weltmeister} kann nicht gleichzeitig Weltmeister und Finalist sein
+                    ℹ️ Nur Teams aus der anderen Bracket-Hälfte – {myTip.weltmeister} kann nicht gleichzeitig Weltmeister und Platz 2 sein
                   </div>
                 )}
               )}
