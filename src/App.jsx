@@ -1474,14 +1474,12 @@ function RangVerlauf({board, allTips, results, uid}) {
 
   const n = checkpoints.length
   const userCount = board.length
-  // Layout: Linien links, Namen rechts mit reserviertem Platz (kein Abschneiden mehr)
-  const rowH = Math.max(18, Math.min(24, Math.round(250/userCount)))
-  const padT = 14, padB = 16
+  // Feste Pixel-Höhe (skaliert NICHT mit der Breite) → HTML-Labels bleiben lesbar, egal ob Mobile oder Desktop.
+  const rowH = userCount<=6?28:userCount<=9?23:19
+  const padT = 12, padB = 12
   const H = padT + padB + (userCount-1)*rowH
-  const W = 400, x0 = 28, x1 = 236, lblX = 246
-  const xStep = n>1 ? (x1-x0)/(n-1) : 0
-  const xPos = i => x0 + i*xStep
-  const yPos = rank => padT + (rank-1)*rowH
+  const xPos = i => n>1 ? 2 + (i/(n-1))*96 : 50   // in % (SVG wird horizontal gestreckt)
+  const yPos = rank => padT + (rank-1)*rowH        // in px (Höhe ist fix)
 
   // 12 gut unterscheidbare Farben (vorher nur 8 → Wiederholungen)
   const COLORS=['#FFD700','#4CC9F0','#F72585','#06D6A0','#9B5DE5','#FB8500','#4895EF','#80ED99','#FF6B6B','#C77DFF','#FFC857','#B0B8D8']
@@ -1492,32 +1490,42 @@ function RangVerlauf({board, allTips, results, uid}) {
         Ranglisten-Verlauf <span className={`tips-chevron${open?' open':''}`}>›</span>
       </button>
       {open && (
-        <div className="rang-verlauf-chart">
-          <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto'}}>
-            {/* Rang-Gitterlinien */}
-            {board.map((_,i)=>(
-              <line key={i} x1={x0} y1={yPos(i+1)} x2={x1} y2={yPos(i+1)} style={{stroke:'var(--dark-4)'}} strokeWidth="1"/>
+        <div className="rv-wrap">
+          <div className="rv-ranks" style={{height:H}}>
+            {Array.from({length:userCount},(_,i)=>(
+              <span key={i} className="rv-rank" style={{top:yPos(i+1)}}>{i+1}</span>
             ))}
-            {/* Spieltag-Nummern */}
-            {checkpoints.map((_,i)=>(
-              <text key={'d'+i} x={xPos(i)} y={H-3} style={{fill:'var(--muted)'}} fontSize="7.5" textAnchor="middle">{i+1}</text>
-            ))}
-            {/* Linie + Label pro Spieler */}
+          </div>
+          <div className="rv-plot" style={{height:H}}>
+            <svg className="rv-svg" viewBox={`0 0 100 ${H}`} preserveAspectRatio="none">
+              {board.map((_,i)=>(
+                <line key={i} x1="0" y1={yPos(i+1)} x2="100" y2={yPos(i+1)} style={{stroke:'var(--dark-4)'}} strokeWidth="1" vectorEffect="non-scaling-stroke"/>
+              ))}
+              {board.map((u,ui)=>{
+                const ranks=checkpoints.map(cp=>cp[u.uid]||userCount)
+                const me=u.uid===uid
+                return <polyline key={u.uid} points={ranks.map((r,i)=>`${xPos(i)},${yPos(r)}`).join(' ')} fill="none" stroke={COLORS[ui%COLORS.length]} strokeWidth={me?3.2:2} strokeLinejoin="round" strokeLinecap="round" opacity={me?1:.92} vectorEffect="non-scaling-stroke"/>
+              })}
+            </svg>
+            <div className="rv-days">
+              {checkpoints.map((_,i)=>(<span key={i} className="rv-day" style={{left:`${xPos(i)}%`}}>{i+1}</span>))}
+            </div>
+          </div>
+          <div className="rv-names" style={{height:H}}>
             {board.map((u,ui)=>{
               const ranks=checkpoints.map(cp=>cp[u.uid]||userCount)
-              const color=COLORS[ui%COLORS.length]
+              const lastRank=ranks[ranks.length-1]
               const me=u.uid===uid
-              const firstRank=ranks[0], lastRank=ranks[ranks.length-1]
+              const color=COLORS[ui%COLORS.length]
               return (
-                <g key={u.uid}>
-                  <polyline points={ranks.map((rank,i)=>`${xPos(i)},${yPos(rank)}`).join(' ')} fill="none" stroke={color} strokeWidth={me?3.4:2.2} strokeLinejoin="round" strokeLinecap="round" opacity={me?1:.9}/>
-                  <text x={xPos(0)} y={yPos(firstRank)} dx="-5" dy="3" fill={color} fontSize="8" textAnchor="end" fontWeight="700">{firstRank}</text>
-                  <circle cx={xPos(n-1)} cy={yPos(lastRank)} r={me?5:4} fill={color}/>
-                  <text x={lblX} y={yPos(lastRank)} dy="3.2" fill={color} fontSize="10.5" fontWeight={me?700:500}>{u.displayName?.split(' ')[0]}{me?' ◄':''}</text>
-                </g>
+                <span key={u.uid} className={`rv-name${me?' me':''}`} style={{top:yPos(lastRank)}}>
+                  <span className="rv-dot" style={{background:color}}/>
+                  <span className="rv-nm" style={{color}}>{u.displayName?.split(' ')[0]}</span>
+                  {me && <span className="rv-me">◄</span>}
+                </span>
               )
             })}
-          </svg>
+          </div>
         </div>
       )}
     </div>
