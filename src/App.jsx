@@ -618,7 +618,10 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
 
       <div className="mc-row">
         <div className="mc-home" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.home)}>
-          <span className="mc-tname">{match.home}</span>
+          <div className="mc-team-col right">
+            <span className="mc-tname">{match.home}</span>
+            {!isKo && TEAMS[match.home]?.strength != null && <span className="mc-str" style={{color:strengthColor(TEAMS[match.home].strength)}}>{TEAMS[match.home].strength}</span>}
+          </div>
           {homeCode && <img src={flagUrl(homeCode)} className="mc-flag" alt=""/>}
         </div>
 
@@ -640,7 +643,10 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
 
         <div className="mc-away" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.away)}>
           {awayCode && <img src={flagUrl(awayCode)} className="mc-flag" alt=""/>}
-          <span className="mc-tname">{match.away}</span>
+          <div className="mc-team-col left">
+            <span className="mc-tname">{match.away}</span>
+            {!isKo && TEAMS[match.away]?.strength != null && <span className="mc-str" style={{color:strengthColor(TEAMS[match.away].strength)}}>{TEAMS[match.away].strength}</span>}
+          </div>
         </div>
       </div>
 
@@ -1950,6 +1956,18 @@ export default function App() {
   useEffect(()=>{
     const unsub=onSnapshot(collection(db,'results'),snap=>{const r={};snap.docs.forEach(d=>{r[d.id]=d.data()});setResults(r)}); return unsub
   },[])
+  const [untippedCount, setUntippedCount] = useState(0)
+  useEffect(()=>{
+    if(!authUser?.uid){setUntippedCount(0);return}
+    const uid=authUser.uid
+    const unsub=onSnapshot(collection(db,'tips'),snap=>{
+      const tipped=new Set()
+      snap.docs.forEach(d=>{const data=d.data();if(data.uid===uid)tipped.add(data.matchId)})
+      const now2=new Date()
+      setUntippedCount(MATCHES.filter(m=>!KO_GROUPS.includes(m.group)&&parseMatchDate(m)>now2&&!tipped.has(m.id)).length)
+    })
+    return unsub
+  },[authUser?.uid])
   if(authUser===undefined) return <div className="loading">⚽ Laden…</div>
   if(!authUser) return (
     <div className="auth-wrap">
@@ -1973,7 +1991,7 @@ export default function App() {
   function dismissSonderPopup(){ setShowSonderPopup(false) }
   function goToSonder(){ localStorage.setItem('tippen_goto_filter','SONDER'); setShowSonderPopup(false); setTab('tippen') }
   const navItems=[
-    {id:'tippen',    icon:'⚽', label:'Tippen'},
+    {id:'tippen',    icon:'⚽', label:'Tippen', badge: untippedCount||null},
     {id:'spielplan', icon:<CalendarDays size={20} strokeWidth={1.5}/>, label:'Spielplan'},
     {id:'tabelle',   icon:'📊', label:'Tabelle'},
     {id:'rangliste', icon:'🏆', label:'Liga'},
@@ -2012,7 +2030,10 @@ export default function App() {
       <nav className="bottom-nav">
         {navItems.map(n=>(
           <button key={n.id} className={`nav-btn${tab===n.id?' active':''}`} onClick={()=>setTab(n.id)}>
-            <span className="nav-icon">{n.id==='profil'?<InitialsAvatar name={profile?.displayName||'?'} uid={authUser.uid} size={24}/>:n.icon}</span>
+            <span className="nav-icon">
+              {n.badge && <span className="nav-badge">{n.badge > 9 ? '9+' : n.badge}</span>}
+              {n.id==='profil'?<InitialsAvatar name={profile?.displayName||'?'} uid={authUser.uid} size={24}/>:n.icon}
+            </span>
             <span>{n.label}</span>
           </button>
         ))}
