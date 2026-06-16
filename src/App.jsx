@@ -372,8 +372,8 @@ const SONDER = [
   {id:'finalist',      icon:'🥈', label:'Finalist',             desc:'Welches Team verliert das Finale?',                                   pts:6, type:'team'},
   {id:'platz3',        icon:'🥉', label:'Platz 3',              desc:'Welches Team holt den 3. Platz?',                                    pts:6, type:'team'},
   {id:'topteam',       icon:'⚽', label:'Top-Torjäger-Team',    desc:'Aus welchem Team kommt der Torschützenkönig?',                       pts:6, type:'team'},
-  {id:'ueberraschung', icon:'💥', label:'Überraschungsteam',    desc:'Welcher Aussenseiter (Stärke ≤72) kommt ins Halbfinale?',            pts:9, type:'team'},
-  {id:'topgruppe',     icon:'🔥', label:'Tor-Gruppe',           desc:'Welche Gruppe erzielt in der Vorrunde die meisten Tore?',            pts:6, type:'group'},
+  {id:'meistetore',    icon:'🥅', label:'Meiste Turnier-Tore',  desc:'Welches Team erzielt die meisten Tore im gesamten Turnier?',          pts:6, type:'team'},
+  {id:'fruehexit',     icon:'💥', label:'Früh-Scheitern',        desc:'Welcher Topfavorit (Stärke ≥87) scheitert vor dem Viertelfinale?',   pts:9, type:'team', minStr:87},
   {id:'schweiz_stage', icon:'🇨🇭', label:'Wo landet die Schweiz?', desc:'Wie weit kommt die Schweiz an der WM 2026?',                    pts:6, type:'stage'},
 ]
 
@@ -618,7 +618,6 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
 
       <div className="mc-row">
         <div className="mc-home" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.home)}>
-          {!isKo && TEAMS[match.home]?.strength != null && <span className="mc-str" style={{color:strengthColor(TEAMS[match.home].strength)}}>{TEAMS[match.home].strength}</span>}
           <span className="mc-tname">{match.home}</span>
           {homeCode && <img src={flagUrl(homeCode)} className="mc-flag" alt=""/>}
         </div>
@@ -642,9 +641,15 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
         <div className="mc-away" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.away)}>
           {awayCode && <img src={flagUrl(awayCode)} className="mc-flag" alt=""/>}
           <span className="mc-tname">{match.away}</span>
-          {!isKo && TEAMS[match.away]?.strength != null && <span className="mc-str" style={{color:strengthColor(TEAMS[match.away].strength)}}>{TEAMS[match.away].strength}</span>}
         </div>
       </div>
+      {!isKo && (
+        <div className="mc-str-row">
+          <span style={{color:strengthColor(TEAMS[match.home]?.strength||0), textAlign:'right'}}>{TEAMS[match.home]?.strength}</span>
+          <span/>
+          <span style={{color:strengthColor(TEAMS[match.away]?.strength||0), textAlign:'left'}}>{TEAMS[match.away]?.strength}</span>
+        </div>
+      )}
 
       {isKoGroup&&tipIsDraw&&!locked&&!result && (
         <div className="pen-row">
@@ -953,6 +958,7 @@ function SonderView({uid, now}) {
         const isWrong   = !!(res && val && val !== res)
         const options   = q.type === 'group' ? groupNames
           : q.type === 'stage' ? STAGE_OPTIONS
+          : q.minStr ? teamNames.filter(t => (TEAMS[t]?.strength||0) >= q.minStr)
           : q.id === 'finalist' && myTip.weltmeister
             ? (() => {
                 const wg = TEAM_TO_GROUP[myTip.weltmeister]
