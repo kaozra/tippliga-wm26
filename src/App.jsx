@@ -360,6 +360,24 @@ function parseMatchDate(m) {
 }
 const KO_GROUPS = ['R32','QF','SF','P3','FIN']
 
+const SONDER_LOCK = new Date(2026, 5, 11, 21, 0) // 11. Juni 21:00 CEST
+const SONDER = [
+  {id:'weltmeister',   icon:'🏆', label:'Weltmeister',          desc:'Welches Team gewinnt die WM 2026?',                                   pts:9, type:'team'},
+  {id:'finalist',      icon:'🥈', label:'Finalist',             desc:'Welches Team verliert das Finale?',                                   pts:6, type:'team'},
+  {id:'platz3',        icon:'🥉', label:'Platz 3',              desc:'Welches Team holt den 3. Platz?',                                    pts:6, type:'team'},
+  {id:'topteam',       icon:'⚽', label:'Top-Torjäger-Team',    desc:'Aus welchem Team kommt der Torschützenkönig?',                       pts:6, type:'team'},
+  {id:'ueberraschung', icon:'💥', label:'Überraschungsteam',    desc:'Welcher Aussenseiter (Stärke ≤72) kommt ins Halbfinale?',            pts:9, type:'team'},
+  {id:'topgruppe',     icon:'🔥', label:'Tor-Gruppe',           desc:'Welche Gruppe erzielt in der Vorrunde die meisten Tore?',            pts:6, type:'group'},
+]
+
+function calcSonderPoints(sonderTip, sonderResults) {
+  if (!sonderResults || !sonderTip) return 0
+  return SONDER.reduce((sum, q) => {
+    if (sonderResults[q.id] && sonderTip[q.id] === sonderResults[q.id]) return sum + q.pts
+    return sum
+  }, 0)
+}
+
 function calcPoints(tip, result) {
   if (!result||result.homeGoals==null||result.awayGoals==null) return null
   const th=tip.homeGoals,ta=tip.awayGoals,rh=result.homeGoals,ra=result.awayGoals
@@ -867,6 +885,87 @@ function MatchTipsPanel({matchId, allTips, allUsers, result}) {
 }
 
 // ── TIPPEN TAB ────────────────────────────────────────────────────────────────
+// ── SONDERTIPPS ───────────────────────────────────────────────────────────────
+function SonderView({uid, now}) {
+  const [myTip, setMyTip] = useState({})
+  const [sonderResults, setSonderResults] = useState(null)
+  const locked = now >= SONDER_LOCK
+  const teamNames = Object.keys(TEAMS).sort((a,b) => TEAMS[b].strength - TEAMS[a].strength)
+  const groupNames = Object.keys(GROUPS)
+
+  useEffect(() => {
+    if (!uid) return
+    const u1 = onSnapshot(doc(db,'sondertips',uid), snap => { if (snap.exists()) setMyTip(snap.data()) })
+    const u2 = onSnapshot(doc(db,'results','sonder'), snap => { if (snap.exists()) setSonderResults(snap.data()) })
+    return () => { u1(); u2() }
+  }, [uid])
+
+  async function saveTip(qid, val) {
+    if (locked || !val) return
+    setMyTip(prev => ({...prev, [qid]: val}))
+    await setDoc(doc(db,'sondertips',uid), {[qid]: val, updatedAt: serverTimestamp()}, {merge:true})
+  }
+
+  const myPts = calcSonderPoints(myTip, sonderResults)
+  const hasResults = sonderResults && SONDER.some(q => sonderResults[q.id])
+
+  return (
+    <div className="sonder-wrap">
+      <div className="sonder-info-row">
+        <div className="sonder-info-text">Richtig getippt = <b>3×</b> die normalen Punkte. Tipps sperren mit WM-Beginn am 11. Juni.</div>
+        <div className={`sonder-lock-badge${locked?' locked':''}`}>{locked ? '🔒 Gesperrt' : '🔓 Offen bis 11.06.'}</div>
+      </div>
+      {hasResults && (
+        <div className="sonder-total-row">Meine Sonder-Punkte: <b className="sonder-total-pts">{myPts}</b></div>
+      )}
+      {SONDER.map(q => {
+        const val = myTip[q.id] || ''
+        const res = sonderResults?.[q.id]
+        const isCorrect = !!(res && val && val === res)
+        const isWrong   = !!(res && val && val !== res)
+        const options   = q.type === 'group' ? groupNames : teamNames
+        return (
+          <div key={q.id} className={`sonder-card${isCorrect?' s-correct':isWrong?' s-wrong':''}`}>
+            <div className="sonder-card-top">
+              <span className="sonder-q-icon">{q.icon}</span>
+              <div className="sonder-q-info">
+                <div className="sonder-q-label">{q.label}</div>
+                <div className="sonder-q-desc">{q.desc}</div>
+              </div>
+              <div className="sonder-pts-badge">{q.pts}<span className="sonder-pts-sub"> Pkt</span></div>
+            </div>
+            <div className="sonder-card-body">
+              {locked ? (
+                <div className="sonder-answer-row">
+                  {val ? (
+                    <>
+                      {q.type==='team' && TEAMS[val]?.code &&
+                        <img src={`https://flagcdn.com/w20/${TEAMS[val].code}.webp`} className="sonder-ans-flag" alt=""/>}
+                      <span className="sonder-ans-val">{val}</span>
+                      {isCorrect && <span className="sonder-verdict sonder-correct">✓ +{q.pts} Pkt</span>}
+                      {isWrong   && <><span className="sonder-verdict sonder-wrong">✗</span>{res && <span className="sonder-verdict-hint"> → {res}</span>}</>}
+                      {!res      && <span className="sonder-verdict sonder-pending">⏳</span>}
+                    </>
+                  ) : <span className="sonder-no-pick">Kein Tipp abgegeben</span>}
+                </div>
+              ) : (
+                <select className="sonder-select" value={val} onChange={e => saveTip(q.id, e.target.value)}>
+                  <option value="">— Bitte wählen —</option>
+                  {options.map(o => (
+                    <option key={o} value={o}>
+                      {q.type==='team' ? `${o} (${TEAMS[o]?.strength})` : `Gruppe ${o}`}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function TippenTab({uid, results}) {
   const [tips, setTips] = useState({})
   const [allTips, setAllTips] = useState([])
@@ -914,7 +1013,8 @@ function TippenTab({uid, results}) {
   }
 
   const filterItems = [
-    {id:'NEXT', label:'⚡ Nächste'},
+    {id:'NEXT',   label:'⚡ Nächste'},
+    {id:'SONDER', label:'⭐ Sonder'},
     ...Object.keys(GROUPS).map(g=>({id:g, label:`Gr. ${g}`})),
     {id:'R32', label:'Sechzehntelfinale'},
     {id:'QF',  label:'Viertelfinale'},
@@ -936,8 +1036,9 @@ function TippenTab({uid, results}) {
 
       {/* Content */}
       <div style={{marginTop:12}}>
-        {filter==='NEXT' && <NextView tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
-        {filter in GROUPS && <GroupView group={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
+        {filter==='NEXT'   && <NextView tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
+        {filter==='SONDER' && <SonderView uid={uid} now={now} />}
+        {filter in GROUPS  && <GroupView group={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
         {['R32','QF','SF','P3','FIN'].includes(filter) && <KoView koGroup={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
       </div>
 
@@ -1340,16 +1441,22 @@ function RangVerlauf({board, allTips, results}) {
 function RanglisteTab({uid, results}) {
   const [users, setUsers] = useState([])
   const [allTips, setAllTips] = useState([])
+  const [allSonderTips, setAllSonderTips] = useState([])
+  const [sonderResults, setSonderResults] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
   useEffect(()=>{
     const u1=onSnapshot(collection(db,'users'),snap=>setUsers(snap.docs.map(d=>({uid:d.id,...d.data()}))))
     const u2=onSnapshot(collection(db,'tips'),snap=>setAllTips(snap.docs.map(d=>d.data())))
-    return()=>{u1();u2()}
+    const u3=onSnapshot(collection(db,'sondertips'),snap=>setAllSonderTips(snap.docs.map(d=>({uid:d.id,...d.data()}))))
+    const u4=onSnapshot(doc(db,'results','sonder'),snap=>{ if(snap.exists()) setSonderResults(snap.data()) })
+    return()=>{u1();u2();u3();u4()}
   },[])
   const board = users.map(u=>{
     const myTips=allTips.filter(t=>t.uid===u.uid)
-    const pts=myTips.reduce((s,t)=>{ const r=results[t.matchId],p=r?calcPoints(t,r):0; return s+(p||0) },0)
-    return{...u,pts,tipCount:myTips.length}
+    const matchPts=myTips.reduce((s,t)=>{ const r=results[t.matchId],p=r?calcPoints(t,r):0; return s+(p||0) },0)
+    const mySonder=allSonderTips.find(s=>s.uid===u.uid)||{}
+    const sonderPts=calcSonderPoints(mySonder,sonderResults)
+    return{...u,pts:matchPts+sonderPts,sonderPts,tipCount:myTips.length}
   }).sort((a,b)=>b.pts-a.pts)
   const maxPts = board[0]?.pts||1
   const platH = {1:56,2:38,3:24}
@@ -1574,15 +1681,66 @@ function EinladenTab({profile}) {
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
 function AdminTab({results}) {
   const [filter, setFilter] = useState('A')
-  const keys=[...Object.keys(GROUPS),'R32','QF','SF','P3','FIN']
+  const keys=[...Object.keys(GROUPS),'R32','QF','SF','P3','FIN','SONDER']
   return (
     <div>
       <div className="section-title">⚙️ Admin</div>
       <div className="group-filter-slider">
-        {keys.map(k=><button key={k} className={`filter-btn${filter===k?' active':''}`} onClick={()=>setFilter(k)}>{k}</button>)}
+        {keys.map(k=><button key={k} className={`filter-btn${filter===k?' active':''}`} onClick={()=>setFilter(k)}>{k==='SONDER'?'⭐ Sonder':k}</button>)}
       </div>
       <div style={{marginTop:12}}>
-        {MATCHES.filter(m=>m.group===filter).map(m=><AdminMatchCard key={m.id} match={m} result={results[m.id]}/>)}
+        {filter==='SONDER'
+          ? <AdminSonderCard />
+          : MATCHES.filter(m=>m.group===filter).map(m=><AdminMatchCard key={m.id} match={m} result={results[m.id]}/>)
+        }
+      </div>
+    </div>
+  )
+}
+
+function AdminSonderCard() {
+  const [vals, setVals] = useState({})
+  const [saved, setSaved] = useState(false)
+  const teamNames = Object.keys(TEAMS).sort((a,b) => TEAMS[b].strength - TEAMS[a].strength)
+  const groupNames = Object.keys(GROUPS)
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db,'results','sonder'), snap => {
+      if (snap.exists()) setVals(snap.data())
+    })
+    return unsub
+  }, [])
+
+  async function save() {
+    const data = {...vals, updatedAt: serverTimestamp()}
+    await setDoc(doc(db,'results','sonder'), data)
+    setSaved(true); setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <div className="admin-match">
+      <div className="admin-match-title">⭐ Sondertipp-Ergebnisse setzen</div>
+      {SONDER.map(q => {
+        const options = q.type === 'group' ? groupNames : teamNames
+        return (
+          <div key={q.id} style={{marginBottom:12}}>
+            <div style={{fontSize:12,color:'var(--muted)',marginBottom:4}}>{q.icon} {q.label} ({q.pts} Pkt)</div>
+            <select
+              className="sonder-select"
+              value={vals[q.id]||''}
+              onChange={e => setVals(prev => ({...prev, [q.id]: e.target.value}))}
+            >
+              <option value="">— Noch kein Ergebnis —</option>
+              {options.map(o => <option key={o} value={o}>{q.type==='team'?`${o} (${TEAMS[o]?.strength})`:`Gruppe ${o}`}</option>)}
+            </select>
+          </div>
+        )
+      })}
+      <div style={{marginTop:16}}>
+        {saved
+          ? <span className="saved-badge">✓ Gespeichert</span>
+          : <button className="save-result-btn" onClick={save}>Alle speichern</button>
+        }
       </div>
     </div>
   )
