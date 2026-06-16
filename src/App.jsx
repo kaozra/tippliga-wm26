@@ -597,6 +597,9 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
   function handleBlur(){if(h!==''&&a!=='') onSave(match.id,h,a,isKoGroup&&+h===+a?penWinner:null)}
   function handlePen(pw){setPenWinner(pw); onSave(match.id,h,a,pw)}
 
+  const homeCode = TEAMS[match.home]?.code
+  const awayCode = TEAMS[match.away]?.code
+
   return (
     <div className={`match-card${result?' has-result':''}${locked?' locked':''}`}>
       <div className="match-meta">
@@ -605,12 +608,14 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
         {showDeadline && <span className="deadline-badge">&lt;1h</span>}
         {venue && !compact && <span className="match-venue"> · 🏟️ {venue.stadium}, {venue.city} ({venue.cap.toLocaleString()})</span>}
       </div>
-      <div className="match-row">
-        {isKo
-          ? <div className="team-cell left ko-team"><span className="team-cell-name">{match.home}</span></div>
-          : <TeamCell name={match.home} align="left" onClick={()=>onTeamClick&&onTeamClick(match.home)} />
-        }
-        <div className="match-center-col">
+
+      <div className="mc-row">
+        <div className="mc-home" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.home)}>
+          <span className="mc-tname">{match.home}</span>
+          {homeCode && <img src={flagUrl(homeCode)} className="mc-flag" alt=""/>}
+        </div>
+
+        <div className="mc-center">
           {result
             ? <div className="result-score">{result.homeGoals}<span className="score-sep">:</span>{result.awayGoals}</div>
             : locked
@@ -621,28 +626,31 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
                   <input className="tip-inp" type="number" min="0" max="99" value={a} onChange={e=>setA(e.target.value)} onBlur={handleBlur} placeholder="–" />
                 </div>
           }
-          {isKoGroup&&tipIsDraw&&!locked&&!result && (
-            <div className="pen-row">
-              <span className="pen-label">Elfmeter</span>
-              <button className={`pen-btn${penWinner==='home'?' active':''}`} onClick={()=>handlePen('home')}>{match.home}</button>
-              <button className={`pen-btn${penWinner==='away'?' active':''}`} onClick={()=>handlePen('away')}>{match.away}</button>
-            </div>
-          )}
-          {isKoGroup&&locked&&tip&&tipIsDraw&&tip.penaltyWinner && (
-            <div className="pen-locked">{tip.penaltyWinner==='home'?match.home:match.away} i.E.</div>
-          )}
-          {isKoGroup&&result&&resultIsDraw&&result.penaltyWinner && (
-            <div className="pen-locked result">{result.penaltyWinner==='home'?match.home:match.away} i.E.</div>
-          )}
           {pts!=null && <div className="pts-row">{ptsLabel(pts)}</div>}
           {locked&&pts==null&&!result&&tip==null && <div className="no-tip-label">kein Tipp</div>}
           {!locked&&tip!=null&&h!=='' && <div className="saved-tick">✓</div>}
         </div>
-        {isKo
-          ? <div className="team-cell right ko-team"><span className="team-cell-name">{match.away}</span></div>
-          : <TeamCell name={match.away} align="right" onClick={()=>onTeamClick&&onTeamClick(match.away)} />
-        }
+
+        <div className="mc-away" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.away)}>
+          {awayCode && <img src={flagUrl(awayCode)} className="mc-flag" alt=""/>}
+          <span className="mc-tname">{match.away}</span>
+        </div>
       </div>
+
+      {isKoGroup&&tipIsDraw&&!locked&&!result && (
+        <div className="pen-row">
+          <span className="pen-label">Elfmeter</span>
+          <button className={`pen-btn${penWinner==='home'?' active':''}`} onClick={()=>handlePen('home')}>{match.home}</button>
+          <button className={`pen-btn${penWinner==='away'?' active':''}`} onClick={()=>handlePen('away')}>{match.away}</button>
+        </div>
+      )}
+      {isKoGroup&&locked&&tip&&tipIsDraw&&tip.penaltyWinner && (
+        <div className="pen-locked">{tip.penaltyWinner==='home'?match.home:match.away} i.E.</div>
+      )}
+      {isKoGroup&&result&&resultIsDraw&&result.penaltyWinner && (
+        <div className="pen-locked result">{result.penaltyWinner==='home'?match.home:match.away} i.E.</div>
+      )}
+
       {locked && <MatchTipsPanel matchId={match.id} allTips={allTips} allUsers={allUsers} result={result} />}
       {result && allEvents[match.id]?.length > 0 && (
         <MatchEvents events={allEvents[match.id]} match={match} />
