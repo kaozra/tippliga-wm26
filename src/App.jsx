@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Crosshair, Star, Flame, Skull, PenLine, Sun, Moon, Download, Share, CalendarDays } from 'lucide-react'
+import { Crosshair, Star, Flame, Skull, PenLine, Sun, Moon, Download, Share, CalendarDays, Crown } from 'lucide-react'
 import { initializeApp } from 'firebase/app'
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -1560,8 +1560,6 @@ function RanglisteTab({uid, results}) {
     const sonderPts=calcSonderPoints(mySonder,sonderResults)
     return{...u,pts:matchPts+sonderPts,sonderPts,tipCount:myTips.length}
   }).sort((a,b)=>b.pts-a.pts)
-  const maxPts = board[0]?.pts||1
-  const platH = {1:56,2:38,3:24}
 
   // Achievements
   const achievements = (() => {
@@ -1592,27 +1590,30 @@ function RanglisteTab({uid, results}) {
   const podiumOrder = top.length>=3?[top[1],top[0],top[2]]:top.length===2?[top[1],top[0]]:[top[0]]
   const podiumRank  = top.length>=3?[2,1,3]:top.length===2?[2,1]:[1]
 
+  const leaderPts = board[0]?.pts || 0
+  const playedCount = MATCHES.filter(m=>{ const r=results[m.id]; return r&&r.homeGoals!=null }).length
+
   return (
     <div className="rangliste-wrap">
       {board.length===0 && <div className="loading">Laden…</div>}
       {board.length>0 && (
         <>
+          <div className="rl-head">
+            <span className="rl-title">Rangliste</span>
+            <span className="rl-sub">{board.length} Spieler · {playedCount} {playedCount===1?'Spiel':'Spiele'} gewertet</span>
+          </div>
+
           {/* Podium 2-1-3 */}
           <div className="podium">
             {podiumOrder.map((u,i)=>{
               const rank=podiumRank[i]
-              const medals={1:'🥇',2:'🥈',3:'🥉'}
               return (
-                <div key={u.uid} className={`podium-slot${u.uid===uid?' me':''}`} onClick={()=>setSelectedUser(u)}>
-                  <div className="podium-upper">
-                    <div className="podium-medal">{medals[rank]}</div>
-                    <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={rank===1?52:42}/>
-                    <div className="podium-name">{u.displayName}</div>
-                    <div className="podium-pts">{u.pts}<span className="podium-pts-lbl">Pkt</span></div>
-                  </div>
-                  <div className="podium-platform" style={{height:platH[rank]}}>
-                    <span className="podium-rank-num">{rank}</span>
-                  </div>
+                <div key={u.uid} className={`pod2-slot pod2-r${rank}${u.uid===uid?' me':''}`} onClick={()=>setSelectedUser(u)}>
+                  {rank===1 && <div className="pod2-crown"><Crown size={20} strokeWidth={2} fill="currentColor"/></div>}
+                  <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={rank===1?60:46}/>
+                  <div className="pod2-name">{u.displayName}</div>
+                  <div className="pod2-pts">{u.pts}<span>Pkt</span></div>
+                  <div className="pod2-base"><span className="pod2-rank">{rank}</span></div>
                 </div>
               )
             })}
@@ -1623,18 +1624,16 @@ function RanglisteTab({uid, results}) {
             <div className="rank-list">
               {board.slice(3).map((u,i)=>{
                 const rank=i+4
-                const pct=maxPts>0?Math.round(u.pts/maxPts*100):0
+                const pct=leaderPts>0?Math.round(u.pts/leaderPts*100):0
+                const diff=leaderPts-u.pts
                 return (
                   <div key={u.uid} className={`rank-item${u.uid===uid?' me':''}`} onClick={()=>setSelectedUser(u)}>
+                    <span className="rank-fill" style={{width:`${pct}%`}}/>
                     <div className="rank-pos">{rank}</div>
                     <InitialsAvatar name={u.displayName||'?'} uid={u.uid} size={34}/>
-                    <div className="rank-info">
-                      <div className="rank-name">{u.displayName}</div>
-                      <div className="rank-bar-wrap"><div className="rank-bar" style={{width:`${pct}%`}}/></div>
-                    </div>
-                    <div className="rank-pts-wrap">
-                      <div className="rank-pts">{u.pts}</div>
-                    </div>
+                    <div className="rank-name">{u.displayName}{u.uid===uid && <span className="rank-you">DU</span>}</div>
+                    <span className="rank-diff">{diff>0?`−${diff}`:''}</span>
+                    <div className="rank-pts">{u.pts}</div>
                   </div>
                 )
               })}
