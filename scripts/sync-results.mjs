@@ -1,13 +1,13 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
-// Guard: missing secrets → warn + exit cleanly (no failure email)
+// Datenquelle: OpenLigaDB (gratis, kein Key). API-Football scheidet aus:
+// dessen Gratis-Plan sperrt Season 2026 → liefert 0 Spiele.
+// Nur Gruppenspiele werden automatisch gemappt; die KO-Phase bleibt manuell,
+// weil die App dort Platzhalter-Teams (1A, "Sieger R32_1") nutzt.
+
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
   console.warn('[sync] ⚠️  FIREBASE_SERVICE_ACCOUNT secret not set — skipping.')
-  process.exit(0)
-}
-if (!process.env.API_FOOTBALL_KEY) {
-  console.warn('[sync] ⚠️  API_FOOTBALL_KEY secret not set — skipping.')
   process.exit(0)
 }
 
@@ -19,71 +19,18 @@ try {
   db = getFirestore()
 } catch (err) {
   console.error('[sync] ❌ Firebase init failed:', err.message)
-  console.error('[sync] Check that FIREBASE_SERVICE_ACCOUNT is valid JSON.')
-  process.exit(0)  // exit 0 so GitHub doesn't send failure emails
+  process.exit(0)
 }
 
-const API_KEY = process.env.API_FOOTBALL_KEY
-
-// API-Football English team names → our German names
-const TEAM_MAP = {
-  'Mexico':                   'Mexiko',
-  'South Africa':             'Südafrika',
-  'Korea Republic':           'Südkorea',
-  'Czech Republic':           'Tschechien',
-  'Czechia':                  'Tschechien',
-  'Canada':                   'Kanada',
-  'Bosnia and Herzegovina':   'Bosnien-Herzegowina',
-  'Bosnia':                   'Bosnien-Herzegowina',
-  'Qatar':                    'Katar',
-  'Switzerland':              'Schweiz',
-  'Brazil':                   'Brasilien',
-  'Morocco':                  'Marokko',
-  'Haiti':                    'Haiti',
-  'Scotland':                 'Schottland',
-  'United States':            'USA',
-  'USA':                      'USA',
-  'Paraguay':                 'Paraguay',
-  'Australia':                'Australien',
-  'Turkey':                   'Türkei',
-  'Turkiye':                  'Türkei',
-  'Germany':                  'Deutschland',
-  'Curacao':                  'Curaçao',
-  "Cote d'Ivoire":            'Elfenbeinküste',
-  'Ivory Coast':              'Elfenbeinküste',
-  'Ecuador':                  'Ecuador',
-  'Netherlands':              'Niederlande',
-  'Japan':                    'Japan',
-  'Sweden':                   'Schweden',
-  'Tunisia':                  'Tunesien',
-  'Belgium':                  'Belgien',
-  'Egypt':                    'Ägypten',
-  'Iran':                     'Iran',
-  'New Zealand':              'Neuseeland',
-  'Spain':                    'Spanien',
-  'Cape Verde':               'Kap Verde',
-  'Saudi Arabia':             'Saudi-Arabien',
-  'Uruguay':                  'Uruguay',
-  'France':                   'Frankreich',
-  'Senegal':                  'Senegal',
-  'Iraq':                     'Irak',
-  'Norway':                   'Norwegen',
-  'Argentina':                'Argentinien',
-  'Algeria':                  'Algerien',
-  'Austria':                  'Österreich',
-  'Jordan':                   'Jordanien',
-  'Portugal':                 'Portugal',
-  'DR Congo':                 'DR Kongo',
-  'Congo DR':                 'DR Kongo',
-  'Uzbekistan':               'Usbekistan',
-  'Colombia':                 'Kolumbien',
-  'England':                  'England',
-  'Croatia':                  'Kroatien',
-  'Ghana':                    'Ghana',
-  'Panama':                   'Panama',
+const LEAGUE = 'wm26', SEASON = '2026'
+// OpenLigaDB-Teamnamen, die von unseren App-Namen abweichen
+const TEAM_FIX = {
+  'Bosnien und Herzegowina': 'Bosnien-Herzegowina',
+  'Saudi Arabien': 'Saudi-Arabien',
 }
+const fixTeam = t => TEAM_FIX[t] || t || ''
 
-// All group stage matches: matchId → { home, away }
+// Gruppenspiele: Home|Away → matchId
 const MATCHES = [
   {id:'A1',home:'Mexiko',away:'Südafrika'},{id:'A2',home:'Südkorea',away:'Tschechien'},
   {id:'A3',home:'Tschechien',away:'Südafrika'},{id:'A4',home:'Mexiko',away:'Südkorea'},
@@ -115,99 +62,76 @@ const MATCHES = [
   {id:'J1',home:'Argentinien',away:'Algerien'},{id:'J2',home:'Österreich',away:'Jordanien'},
   {id:'J3',home:'Argentinien',away:'Österreich'},{id:'J4',home:'Jordanien',away:'Algerien'},
   {id:'J5',home:'Algerien',away:'Österreich'},{id:'J6',home:'Jordanien',away:'Argentinien'},
-  {id:'K1', home:'Portugal',away:'DR Kongo'},{id:'K2',home:'Usbekistan',away:'Kolumbien'},
+  {id:'K1',home:'Portugal',away:'DR Kongo'},{id:'K2',home:'Usbekistan',away:'Kolumbien'},
   {id:'K3',home:'Portugal',away:'Usbekistan'},{id:'K4',home:'Kolumbien',away:'DR Kongo'},
   {id:'K5',home:'Kolumbien',away:'Portugal'},{id:'K6',home:'DR Kongo',away:'Usbekistan'},
   {id:'L1',home:'England',away:'Kroatien'},{id:'L2',home:'Ghana',away:'Panama'},
   {id:'L3',home:'England',away:'Ghana'},{id:'L4',home:'Panama',away:'Kroatien'},
   {id:'L5',home:'Panama',away:'England'},{id:'L6',home:'Kroatien',away:'Ghana'},
 ]
-
-// Build fast lookup: "Home|Away" → matchId
 const LOOKUP = {}
 MATCHES.forEach(m => { LOOKUP[`${m.home}|${m.away}`] = m.id })
 
-// Live statuses worth syncing
-const SYNC_STATUSES = new Set(['1H','HT','2H','ET','BT','P','FT','AET','PEN'])
+async function get(path) {
+  const r = await fetch(`https://api.openligadb.de/${path}`)
+  if (!r.ok) throw new Error(`OpenLigaDB ${path} → HTTP ${r.status}`)
+  return r.json()
+}
 
-async function syncEvents(fixtureId, matchId) {
-  const existing = await db.collection('events').doc(matchId).get()
-  if (existing.exists) return
-  const resp = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${fixtureId}`, {
-    headers: { 'x-apisports-key': API_KEY }
-  })
-  const data = await resp.json()
-  const events = (data.response || [])
-    .filter(e => ['Goal','Card'].includes(e.type))
-    .map(e => ({
-      time: e.time.elapsed,
-      extra: e.time.extra || null,
-      type: e.type,
-      detail: e.detail,
-      player: e.player.name,
-      assist: e.assist?.name || null,
-      teamName: e.team.name,
-    }))
-  await db.collection('events').doc(matchId).set({
-    matchId, events, updatedAt: FieldValue.serverTimestamp()
-  })
-  console.log(`[sync] 📋 Events for ${matchId}: ${events.length} events`)
+// Endergebnis aus matchResults (resultTypeID 2 = Endstand)
+function finalResult(m) {
+  const res = m.matchResults || []
+  const fin = res.find(r => r.resultTypeID === 2) || res[res.length - 1]
+  return fin ? { h: fin.pointsTeam1, a: fin.pointsTeam2 } : null
+}
+
+// Tor-Events (für die Match-Detail-Anzeige); Team über den Tor-Verlauf
+function goalEvents(m, t1, t2) {
+  const goals = [...(m.goals || [])].sort((a, b) => (a.matchMinute || 0) - (b.matchMinute || 0))
+  let s1 = 0, s2 = 0
+  const out = []
+  for (const g of goals) {
+    const d1 = (g.scoreTeam1 ?? s1) - s1
+    s1 = g.scoreTeam1 ?? s1; s2 = g.scoreTeam2 ?? s2
+    const team = g.isOwnGoal ? (d1 > 0 ? t2 : t1) : (d1 > 0 ? t1 : t2)
+    out.push({
+      time: g.matchMinute || 0, extra: null, type: 'Goal',
+      detail: g.isOwnGoal ? 'Own Goal' : g.isPenalty ? 'Penalty' : 'Normal Goal',
+      player: (g.goalGetterName || '').trim() || '—', assist: null, teamName: team,
+    })
+  }
+  return out
 }
 
 async function sync() {
-  const today = new Date().toISOString().split('T')[0]
-  console.log(`[sync] Fetching WM 2026 fixtures for ${today}`)
-
-  const url = `https://v3.football.api-sports.io/fixtures?league=1&season=2026&date=${today}`
-  const resp = await fetch(url, { headers: { 'x-apisports-key': API_KEY } })
-  const data = await resp.json()
-
-  const fixtures = data.response || []
-  console.log(`[sync] ${fixtures.length} fixture(s) found`)
-
+  const matches = await get(`getmatchdata/${LEAGUE}/${SEASON}`)
+  console.log(`[sync] OpenLigaDB: ${matches.length} Spiele, beendet: ${matches.filter(m=>m.matchIsFinished).length}`)
   let updated = 0, skipped = 0
 
-  for (const f of fixtures) {
-    const status = f.fixture.status.short
-    if (!SYNC_STATUSES.has(status)) { skipped++; continue }
+  for (const x of matches) {
+    if (!x.matchIsFinished) { skipped++; continue }
+    const t1 = fixTeam(x.team1?.teamName), t2 = fixTeam(x.team2?.teamName)
+    let matchId = LOOKUP[`${t1}|${t2}`], swap = false
+    if (!matchId) { matchId = LOOKUP[`${t2}|${t1}`]; swap = true }   // Heim/Auswärts ggf. vertauscht
+    if (!matchId) { skipped++; continue }                            // KO o. Ä. → manuell
 
-    const homeEn = f.teams.home.name
-    const awayEn = f.teams.away.name
-    const homeDE = TEAM_MAP[homeEn]
-    const awayDE = TEAM_MAP[awayEn]
-
-    if (!homeDE || !awayDE) {
-      console.warn(`[sync] No mapping: "${homeEn}" | "${awayEn}"`)
-      skipped++
-      continue
-    }
-
-    const matchId = LOOKUP[`${homeDE}|${awayDE}`]
-    if (!matchId) {
-      console.warn(`[sync] No matchId for: ${homeDE} vs ${awayDE}`)
-      skipped++
-      continue
-    }
-
-    const homeGoals = f.goals.home ?? null
-    const awayGoals = f.goals.away ?? null
-    if (homeGoals === null || awayGoals === null) { skipped++; continue }
+    const r = finalResult(x)
+    if (!r || r.h == null || r.a == null) { skipped++; continue }
+    const homeGoals = swap ? r.a : r.h
+    const awayGoals = swap ? r.h : r.a
 
     await db.collection('results').doc(matchId).set({
-      homeGoals, awayGoals, matchId, status, fixtureId: f.fixture.id,
-      updatedAt: FieldValue.serverTimestamp(),
-      source: 'api-football',
+      homeGoals, awayGoals, matchId, status: 'FT',
+      updatedAt: FieldValue.serverTimestamp(), source: 'openligadb',
     }, { merge: true })
 
-    if (['FT','AET','PEN'].includes(status)) {
-      await syncEvents(f.fixture.id, matchId)
-    }
+    const events = goalEvents(x, t1, t2)
+    await db.collection('events').doc(matchId).set({ matchId, events, updatedAt: FieldValue.serverTimestamp() })
 
-    console.log(`[sync] ✅ ${matchId}: ${homeDE} ${homeGoals}:${awayGoals} ${awayDE} (${status})`)
+    console.log(`[sync] ✅ ${matchId}: ${t1} ${r.h}:${r.a} ${t2}${swap?' (swap)':''}`)
     updated++
   }
-
   console.log(`[sync] Done — updated: ${updated}, skipped: ${skipped}`)
 }
 
-sync().catch(err => { console.error('[sync] ERROR:', err); process.exit(1) })
+sync().catch(err => { console.error('[sync] ERROR:', err.message || err); process.exit(0) })

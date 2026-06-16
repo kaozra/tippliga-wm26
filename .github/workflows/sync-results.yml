@@ -2,10 +2,11 @@ name: Sync WM 2026 Results
 
 on:
   schedule:
-    # Every 3 minutes between 16:00–06:00 UTC (= 18:00–08:00 CEST, covers all match windows)
-    - cron: '*/3 16-23 * * *'
-    - cron: '*/3 0-6  * * *'
-  workflow_dispatch:  # manual trigger from GitHub UI
+    # Alle 15 Min in den Spielfenstern (16:00–06:00 UTC = 18:00–08:00 CEST).
+    # OpenLigaDB wird community-gepflegt → Updates kommen verzögert, minütliches Pollen bringt nichts.
+    - cron: '*/15 16-23 * * *'
+    - cron: '*/15 0-6  * * *'
+  workflow_dispatch:  # manueller Trigger
 
 jobs:
   sync:
@@ -27,5 +28,4 @@ jobs:
       - name: Run sync
         run: node scripts/sync-results.mjs
         env:
-          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
