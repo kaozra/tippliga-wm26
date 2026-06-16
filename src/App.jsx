@@ -1346,34 +1346,16 @@ function TabelleTab({ results, onTeamClick }) {
           {!playerStats && <div className="loading">Lade Statistiken…</div>}
           {playerStats && !playerStats.topscorers?.length && (
             <div className="sp-no-games" style={{textAlign:'center',padding:'48px 20px'}}>
-              ⚽ Spieler-Statistiken erscheinen ab dem ersten Spieltag.<br/>
-              <span style={{fontSize:12,color:'var(--muted)'}}>WM-Start: 11. Juni 2026</span>
+              ⚽ Noch keine Tore erfasst.<br/>
+              <span style={{fontSize:12,color:'var(--muted)'}}>Erscheint, sobald die ersten WM-Tore fallen.</span>
             </div>
           )}
           {playerStats && playerStats.topscorers?.length>0 && <>
             <PlayerStatTable title="Torschützenkönig" icon="⚽" rows={playerStats.topscorers||[]} cols={[
               {key:'goals', label:'Tore'},
-              {key:'assists', label:'Vorlagen'},
-              {key:'games', label:'Spiele'},
+              {key:'penalties', label:'Elfm.'},
             ]}/>
-            <PlayerStatTable title="Beste Vorlagen" icon="🎯" rows={playerStats.topassists||[]} cols={[
-              {key:'assists', label:'Vorlagen'},
-              {key:'goals', label:'Tore'},
-              {key:'games', label:'Spiele'},
-            ]}/>
-            <PlayerStatTable title="Bester Torhüter" icon="🧤" rows={playerStats.topgoalkeepers||[]} cols={[
-              {key:'cleanSheets', label:'Clean Sheets'},
-              {key:'saves', label:'Paraden'},
-              {key:'conceded', label:'Gegentore'},
-            ]}/>
-            <PlayerStatTable title="Gelbe Karten" icon="🟨" rows={playerStats.topyellow||[]} cols={[
-              {key:'yellow', label:'Gelb'},
-              {key:'red', label:'Rot'},
-            ]}/>
-            <PlayerStatTable title="Rote Karten" icon="🟥" rows={playerStats.topred||[]} cols={[
-              {key:'red', label:'Rot'},
-              {key:'yellow', label:'Gelb'},
-            ]}/>
+            <div className="sp-stats-note">Datenquelle: OpenLigaDB · Vorlagen, Karten & Torhüter-Statistiken sind dort nicht verfügbar.</div>
           </>}
         </div>
       )}

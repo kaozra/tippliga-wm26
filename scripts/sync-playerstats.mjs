@@ -1,12 +1,12 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
+// Datenquelle: OpenLigaDB (gratis, kein API-Key, kein Limit).
+// API-Football scheidet aus: der Gratis-Plan sperrt Season 2026.
+// OpenLigaDB liefert Torschützen; Vorlagen/Torhüter/Karten gibt es dort nicht.
+
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
   console.warn('[playerstats] ⚠️  FIREBASE_SERVICE_ACCOUNT not set — skipping.')
-  process.exit(0)
-}
-if (!process.env.API_FOOTBALL_KEY) {
-  console.warn('[playerstats] ⚠️  API_FOOTBALL_KEY not set — skipping.')
   process.exit(0)
 }
 
@@ -21,82 +21,57 @@ try {
   process.exit(0)
 }
 
-const API_KEY = process.env.API_FOOTBALL_KEY
-const LEAGUE = 1
-const SEASON = 2026
-
-const TEAM_MAP = {
-  'Mexico':'Mexiko','South Africa':'Südafrika','Korea Republic':'Südkorea','Czech Republic':'Tschechien','Czechia':'Tschechien','Canada':'Kanada','Bosnia and Herzegovina':'Bosnien-Herzegowina','Qatar':'Katar','Switzerland':'Schweiz','Brazil':'Brasilien','Morocco':'Marokko','Haiti':'Haiti','Scotland':'Schottland','United States':'USA','USA':'USA','Paraguay':'Paraguay','Australia':'Australien','Turkey':'Türkei','Turkiye':'Türkei','Germany':'Deutschland','Curacao':'Curaçao',"Cote d'Ivoire":'Elfenbeinküste','Ivory Coast':'Elfenbeinküste','Ecuador':'Ecuador','Netherlands':'Niederlande','Japan':'Japan','Sweden':'Schweden','Tunisia':'Tunesien','Belgium':'Belgien','Egypt':'Ägypten','Iran':'Iran','New Zealand':'Neuseeland','Spain':'Spanien','Cape Verde':'Kap Verde','Saudi Arabia':'Saudi-Arabien','Uruguay':'Uruguay','France':'Frankreich','Senegal':'Senegal','Iraq':'Irak','Norway':'Norwegen','Argentina':'Argentinien','Algeria':'Algerien','Austria':'Österreich','Jordan':'Jordanien','Portugal':'Portugal','DR Congo':'DR Kongo','Congo DR':'DR Kongo','Uzbekistan':'Usbekistan','Colombia':'Kolumbien','England':'England','Croatia':'Kroatien','Ghana':'Ghana','Panama':'Panama'
+const LEAGUE = 'wm26', SEASON = '2026'
+// OpenLigaDB-Teamnamen, die von unseren App-Namen abweichen
+const TEAM_FIX = {
+  'Bosnien und Herzegowina': 'Bosnien-Herzegowina',
+  'Saudi Arabien': 'Saudi-Arabien',
 }
+const fixTeam = t => TEAM_FIX[t] || t || ''
 
-async function fetchStat(endpoint) {
-  const resp = await fetch(`https://v3.football.api-sports.io/${endpoint}?league=${LEAGUE}&season=${SEASON}`, {
-    headers: { 'x-apisports-key': API_KEY }
-  })
-  const data = await resp.json()
-  return data.response || []
+async function get(path) {
+  const r = await fetch(`https://api.openligadb.de/${path}`)
+  if (!r.ok) throw new Error(`OpenLigaDB ${path} → HTTP ${r.status}`)
+  return r.json()
 }
 
 async function syncPlayerStats() {
-  console.log('[playerstats] Syncing player statistics...')
+  console.log('[playerstats] Syncing Torschützen via OpenLigaDB...')
+  const matches = await get(`getmatchdata/${LEAGUE}/${SEASON}`)
+  const finished = matches.filter(m => m.matchIsFinished).length
+  console.log(`[playerstats] Spiele: ${matches.length}, beendet: ${finished}`)
 
-  const [scorers, assists, yellowCards, redCards, goalkeepers] = await Promise.all([
-    fetchStat('players/topscorers'),
-    fetchStat('players/topassists'),
-    fetchStat('players/topyellowcards'),
-    fetchStat('players/topredcards'),
-    fetchStat('players/topgoalkeepers'),
-  ])
-
-  function mapPlayer(p, statKey) {
-    return {
-      name: p.player.name,
-      photo: p.player.photo || null,
-      team: TEAM_MAP[p.statistics[0]?.team?.name] || p.statistics[0]?.team?.name || '',
-      teamNameEN: p.statistics[0]?.team?.name || '',
-      value: p.statistics[0]?.[statKey] ?? 0,
+  // Torschützen aggregieren; Team über den Tor-Verlauf (Score-Delta) ableiten.
+  const agg = {}
+  for (const m of matches) {
+    const t1 = m.team1?.teamName, t2 = m.team2?.teamName
+    const goals = [...(m.goals || [])].sort((a, b) => (a.matchMinute || 0) - (b.matchMinute || 0))
+    let s1 = 0, s2 = 0
+    for (const g of goals) {
+      const d1 = (g.scoreTeam1 ?? s1) - s1
+      s1 = g.scoreTeam1 ?? s1
+      s2 = g.scoreTeam2 ?? s2
+      const name = (g.goalGetterName || '').trim()
+      if (!name || g.isOwnGoal) continue        // Eigentore zählen nicht zum Schützen
+      const team = d1 > 0 ? t1 : t2              // welche Seite hat regulär getroffen
+      if (!agg[name]) agg[name] = { name, team: fixTeam(team), goals: 0, penalties: 0 }
+      agg[name].goals++
+      if (g.isPenalty) agg[name].penalties++
     }
   }
 
-  const stats = {
-    topscorers: scorers.slice(0,10).map(p => ({
-      name: p.player.name,
-      team: TEAM_MAP[p.statistics[0]?.team?.name] || p.statistics[0]?.team?.name || '',
-      goals: p.statistics[0]?.goals?.total || 0,
-      assists: p.statistics[0]?.goals?.assists || 0,
-      games: p.statistics[0]?.games?.appearences || 0,
-    })),
-    topassists: assists.slice(0,10).map(p => ({
-      name: p.player.name,
-      team: TEAM_MAP[p.statistics[0]?.team?.name] || p.statistics[0]?.team?.name || '',
-      assists: p.statistics[0]?.goals?.assists || 0,
-      goals: p.statistics[0]?.goals?.total || 0,
-      games: p.statistics[0]?.games?.appearences || 0,
-    })),
-    topyellow: yellowCards.slice(0,10).map(p => ({
-      name: p.player.name,
-      team: TEAM_MAP[p.statistics[0]?.team?.name] || p.statistics[0]?.team?.name || '',
-      yellow: p.statistics[0]?.cards?.yellow || 0,
-      red: p.statistics[0]?.cards?.red || 0,
-    })),
-    topred: redCards.slice(0,5).map(p => ({
-      name: p.player.name,
-      team: TEAM_MAP[p.statistics[0]?.team?.name] || p.statistics[0]?.team?.name || '',
-      red: p.statistics[0]?.cards?.red || 0,
-      yellow: p.statistics[0]?.cards?.yellow || 0,
-    })),
-    topgoalkeepers: goalkeepers.slice(0,10).map(p => ({
-      name: p.player.name,
-      team: TEAM_MAP[p.statistics[0]?.team?.name] || p.statistics[0]?.team?.name || '',
-      cleanSheets: p.statistics[0]?.goals?.conceded === 0 ? p.statistics[0]?.games?.appearences || 0 : (p.statistics[0]?.goals?.saves || 0),
-      conceded: p.statistics[0]?.goals?.conceded || 0,
-      saves: p.statistics[0]?.goals?.saves || 0,
-      games: p.statistics[0]?.games?.appearences || 0,
-    })),
-    updatedAt: FieldValue.serverTimestamp(),
-  }
+  const topscorers = Object.values(agg)
+    .sort((a, b) => b.goals - a.goals || a.name.localeCompare(b.name))
+    .slice(0, 15)
 
-  await db.collection('playerstats').doc('wm2026').set(stats)
+  console.log(`[playerstats] ${topscorers.length} Torschützen, Top: ${topscorers.slice(0,3).map(s=>`${s.name}(${s.goals})`).join(', ')}`)
+
+  await db.collection('playerstats').doc('wm2026').set({
+    topscorers,
+    source: 'openligadb',
+    matchesFinished: finished,
+    updatedAt: FieldValue.serverTimestamp(),
+  })
   console.log('[playerstats] ✅ Done')
 }
 

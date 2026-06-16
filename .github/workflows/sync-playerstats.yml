@@ -18,6 +18,5 @@ jobs:
       - run: npm install firebase-admin
       - name: Sync player stats
         env:
-          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node scripts/sync-playerstats.mjs
