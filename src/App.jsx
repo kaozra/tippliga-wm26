@@ -389,16 +389,16 @@ function calcPoints(tip, result) {
   if(result.penaltyWinner){
     if(!correctTendency) return 0
     const correctPen=tip.penaltyWinner===result.penaltyWinner
-    if(exact) return correctPen?3:2
-    return correctPen?2:1
+    if(exact) return correctPen?5:3
+    return correctPen?3:1
   }
-  if(exact) return 3
-  if(correctTendency) return (th===rh||ta===ra)?2:1
+  if(exact) return 5
+  if(correctTendency) return (th===rh||ta===ra)?3:1
   return 0
 }
 function ptsLabel(pts) {
-  if(pts===3) return <span className="pts-3">⭐ 3 Pkt</span>
-  if(pts===2) return <span className="pts-2">✓ 2 Pkt</span>
+  if(pts===5) return <span className="pts-3">⭐ 5 Pkt</span>
+  if(pts===3) return <span className="pts-2">✓ 3 Pkt</span>
   if(pts===1) return <span className="pts-1">~ 1 Pkt</span>
   if(pts===0) return <span className="pts-0">✗ 0 Pkt</span>
   return null
@@ -1051,6 +1051,13 @@ function TippenTab({uid, results}) {
 
   return (
     <div>
+      <div className="pts-legend">
+        <span className="pts-legend-item"><span className="pts-3">⭐ 5</span> Exaktes Resultat</span>
+        <span className="pts-legend-sep">·</span>
+        <span className="pts-legend-item"><span className="pts-2">✓ 3</span> Richtige Tendenz</span>
+        <span className="pts-legend-sep">·</span>
+        <span className="pts-legend-item"><span className="pts-1">~ 1</span> Nur Sieger</span>
+      </div>
       {/* Horizontal scroll slider */}
       <div className="group-filter-slider" ref={sliderRef}>
         {filterItems.map(f=>(
@@ -1912,7 +1919,8 @@ export default function App() {
       setAuthUser(u)
       if(u){
         const snap=await getDoc(doc(db,'users',u.uid));if(snap.exists()) setProfile(snap.data());else setProfile(null)
-        if(!localStorage.getItem('sonder_popup_v2')) setShowSonderPopup(true)
+        const shown=parseInt(localStorage.getItem('sonder_popup_count')||'0')
+        if(shown<3){ setShowSonderPopup(true); localStorage.setItem('sonder_popup_count',String(shown+1)) }
       }
       else setProfile(null)
     }); return unsub
@@ -1940,8 +1948,8 @@ export default function App() {
     </div>
   )
   const isAdmin=authUser.email?.toLowerCase()===ADMIN_EMAIL
-  function dismissSonderPopup(){ localStorage.setItem('sonder_popup_v2','1'); setShowSonderPopup(false) }
-  function goToSonder(){ localStorage.setItem('tippen_goto_filter','SONDER'); dismissSonderPopup(); setTab('tippen') }
+  function dismissSonderPopup(){ setShowSonderPopup(false) }
+  function goToSonder(){ localStorage.setItem('tippen_goto_filter','SONDER'); setShowSonderPopup(false); setTab('tippen') }
   const navItems=[
     {id:'tippen',    icon:'⚽', label:'Tippen'},
     {id:'spielplan', icon:<CalendarDays size={20} strokeWidth={1.5}/>, label:'Spielplan'},
