@@ -302,6 +302,27 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .my-stat-val{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);line-height:1}
 .my-stat-max{font-size:16px;color:var(--muted)}
 .my-stat-lbl{font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
+/* Tipp-Verlauf im User-Modal */
+.th-title{font-size:13px;font-weight:700;color:var(--text);margin:22px 0 10px}
+.th-sub{font-weight:400;color:var(--muted);font-size:11px}
+.th-empty{font-size:12px;color:var(--muted);text-align:center;padding:16px 0}
+.th-list{display:flex;flex-direction:column;gap:6px}
+.th-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;background:var(--dark-3);border-radius:var(--radius-sm);padding:8px 10px}
+.th-teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;min-width:0}
+.th-team{display:flex;align-items:center;gap:5px;min-width:0}
+.th-home{justify-content:flex-end}
+.th-away{justify-content:flex-start}
+.th-tn{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.th-flag{width:18px;height:12px;object-fit:cover;border-radius:1px;flex-shrink:0}
+.th-res{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text-dim);letter-spacing:1px;flex-shrink:0;min-width:34px;text-align:center}
+.th-tip{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.th-tipval{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);letter-spacing:1px}
+.th-pts{font-size:11px;font-weight:700;min-width:24px;text-align:right}
+.th-pts-5{color:var(--gold)}
+.th-pts-3{color:var(--green)}
+.th-pts-1{color:var(--text-dim)}
+.th-pts-0{color:var(--red)}
+.th-notip{font-size:11px;color:var(--muted);font-style:italic}
 .profile-avatar-big{display:flex;justify-content:center;margin-bottom:12px}
 .save-btn{width:100%;padding:10px;background:var(--dark-3);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;cursor:pointer;margin-top:10px;transition:background .2s}
 .save-btn:hover{background:var(--dark-4)}
