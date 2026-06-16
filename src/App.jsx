@@ -618,10 +618,8 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
 
       <div className="mc-row">
         <div className="mc-home" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.home)}>
-          <div className="mc-team-col right">
-            <span className="mc-tname">{match.home}</span>
-            {!isKo && TEAMS[match.home]?.strength != null && <span className="mc-str" style={{color:strengthColor(TEAMS[match.home].strength)}}>{TEAMS[match.home].strength}</span>}
-          </div>
+          {!isKo && TEAMS[match.home]?.strength != null && <span className="mc-str" style={{color:strengthColor(TEAMS[match.home].strength)}}>{TEAMS[match.home].strength}</span>}
+          <span className="mc-tname">{match.home}</span>
           {homeCode && <img src={flagUrl(homeCode)} className="mc-flag" alt=""/>}
         </div>
 
@@ -643,10 +641,8 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
 
         <div className="mc-away" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.away)}>
           {awayCode && <img src={flagUrl(awayCode)} className="mc-flag" alt=""/>}
-          <div className="mc-team-col left">
-            <span className="mc-tname">{match.away}</span>
-            {!isKo && TEAMS[match.away]?.strength != null && <span className="mc-str" style={{color:strengthColor(TEAMS[match.away].strength)}}>{TEAMS[match.away].strength}</span>}
-          </div>
+          <span className="mc-tname">{match.away}</span>
+          {!isKo && TEAMS[match.away]?.strength != null && <span className="mc-str" style={{color:strengthColor(TEAMS[match.away].strength)}}>{TEAMS[match.away].strength}</span>}
         </div>
       </div>
 

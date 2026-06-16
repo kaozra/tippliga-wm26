@@ -101,11 +101,10 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .mc-home{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0;cursor:pointer}
 .mc-away{display:flex;align-items:center;justify-content:flex-start;gap:7px;min-width:0;cursor:pointer}
 .mc-flag{width:26px;height:17px;object-fit:cover;border-radius:2px;flex-shrink:0}
-.mc-team-col{display:flex;flex-direction:column;gap:1px;min-width:0;overflow:hidden}
-.mc-team-col.right{align-items:flex-end}
-.mc-team-col.left{align-items:flex-start}
-.mc-tname{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.mc-str{font-size:10px;font-weight:700;letter-spacing:.3px;line-height:1}
+.mc-tname{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1}
+.mc-home .mc-tname{text-align:right}
+.mc-away .mc-tname{text-align:left}
+.mc-str{font-size:10px;font-weight:700;letter-spacing:.3px;flex-shrink:0;opacity:.9}
 .mc-center{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:90px}
 .result-score{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--gold);letter-spacing:2px;line-height:1;display:flex;align-items:center;gap:4px}
 .score-sep{color:var(--muted);font-size:20px;margin:0 2px}
