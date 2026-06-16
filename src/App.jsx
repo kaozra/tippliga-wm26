@@ -1931,7 +1931,7 @@ function SonderPopup({ onClose, onGo }) {
         <div className="sonder-popup-icon">⭐</div>
         <div className="sonder-popup-title">Sondertipps sind offen!</div>
         <div className="sonder-popup-text">
-          Tippe jetzt auf Weltmeister, Finalist, Überraschungsteam und mehr.<br/>
+          Tippe jetzt auf Weltmeister, Platz 2, Top-Torjäger und mehr.<br/>
           <strong>Deadline: 20. Juni 2026, 18:00 CEST</strong>
         </div>
         <button className="sonder-popup-cta" onClick={onGo}>Jetzt Sondertipps ausfüllen ⭐</button>
@@ -1969,8 +1969,12 @@ export default function App() {
       setAuthUser(u)
       if(u){
         const snap=await getDoc(doc(db,'users',u.uid));if(snap.exists()) setProfile(snap.data());else setProfile(null)
+        // Popup nur zeigen, wenn Sondertipps noch offen sind, NICHT bereits alle ausgefüllt und < 3x gezeigt
+        const sonderSnap=await getDoc(doc(db,'sondertips',u.uid))
+        const sonderData=sonderSnap.exists()?sonderSnap.data():{}
+        const allFilled=SONDER.every(q=>sonderData[q.id])
         const shown=parseInt(localStorage.getItem('sonder_popup_count')||'0')
-        if(shown<3){ setShowSonderPopup(true); localStorage.setItem('sonder_popup_count',String(shown+1)) }
+        if(new Date()<SONDER_LOCK && !allFilled && shown<3){ setShowSonderPopup(true); localStorage.setItem('sonder_popup_count',String(shown+1)) }
       }
       else setProfile(null)
     }); return unsub
