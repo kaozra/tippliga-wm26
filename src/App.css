@@ -97,17 +97,15 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .tips-pts{font-size:10px;font-weight:700;min-width:20px;text-align:right}
 .match-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
 .match-center-col{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:76px}
-.mc-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;padding:10px 0 4px}
-.mc-home{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;cursor:pointer}
-.mc-away{display:flex;align-items:center;justify-content:flex-start;gap:6px;min-width:0;cursor:pointer}
-.mc-flag{width:26px;height:17px;object-fit:cover;border-radius:2px;flex-shrink:0}
-.mc-tname{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1}
-.mc-home .mc-tname{text-align:right}
-.mc-away .mc-tname{text-align:left}
-.mc-str-row{display:grid;grid-template-columns:minmax(0,1fr) 98px minmax(0,1fr);font-size:10px;font-weight:700;letter-spacing:.3px;padding:0 0 8px;opacity:.85}
-.mc-str-row>span:first-child{text-align:right}
-.mc-str-row>span:last-child{text-align:left}
-.mc-center{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:90px}
+.mc2-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:flex-start;gap:6px}
+.mc2-team{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;cursor:pointer}
+.mc2-flag{width:34px;height:23px;object-fit:cover;border-radius:3px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.mc2-name{font-size:13px;font-weight:600;color:var(--text);text-align:center;line-height:1.15;word-break:break-word}
+.mc2-str{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;line-height:1.3;letter-spacing:.3px}
+.mc2-center{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:92px}
+.mc2-time{font-size:11px;color:var(--muted)}
+.mc2-tiplabel{font-size:10px;color:var(--text-dim);letter-spacing:.5px;text-transform:uppercase}
+.mc2-yourtip{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim)}
 .result-score{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--gold);letter-spacing:2px;line-height:1;display:flex;align-items:center;gap:4px}
 .score-sep{color:var(--muted);font-size:20px;margin:0 2px}
 .tip-locked-score{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text-dim);letter-spacing:2px;line-height:1}
@@ -139,25 +137,22 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .next-label{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);letter-spacing:1px}
 .countdown-txt{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--text-dim);letter-spacing:1px}
 .concurrent-note{font-size:11px;color:var(--muted);background:var(--dark-3);border-radius:var(--radius-sm);padding:6px 10px;margin-bottom:10px}
-.next-match-card{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
-.next-match-top{padding:8px 12px;background:var(--dark-3);display:flex;align-items:center;justify-content:space-between;gap:8px}
-.next-group-badge{font-family:'Bebas Neue',sans-serif;font-size:13px;background:var(--gold);color:#000;padding:2px 8px;border-radius:4px;letter-spacing:.5px;flex-shrink:0}
-.next-venue{font-size:10px;color:var(--muted);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.next-teams-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:12px 12px 4px}
-.next-team{display:flex;align-items:center;gap:8px;cursor:pointer}
-.next-team.right{justify-content:flex-end}
-.next-flag{width:36px;height:24px;object-fit:cover;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.5);flex-shrink:0}
-.next-team-name{font-weight:700;font-size:14px;color:var(--text)}
-.next-str{font-size:12px;font-weight:700}
-.next-vs-col{display:flex;flex-direction:column;align-items:center;gap:2px}
-.next-vs{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--muted);letter-spacing:1px}
-.next-time{font-size:10px;color:var(--muted)}
-.next-match-card .match-card{border:none;border-top:1px solid var(--dark-4);border-radius:0}
+.match-card.mc2{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius);margin-bottom:9px;padding:11px 13px}
+.match-card.mc2.has-result{border-left:3px solid var(--gold)}
+.match-card.mc2-featured{border:1.5px solid var(--gold);border-radius:12px;margin-bottom:16px;padding:13px 14px}
+.mc2-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.mc2-grp{font-size:10px;font-weight:700;color:var(--dark);background:var(--gold);padding:3px 9px;border-radius:5px;letter-spacing:.5px;text-transform:uppercase}
+.mc2-livebadge{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--red);letter-spacing:.5px}
+.mc2-metagrp{color:var(--muted)}
+.mc2-venue{text-align:center;margin-top:11px;padding-top:10px;border-top:1px solid var(--dark-4);font-size:11px;color:var(--muted)}
+.mc2-featured .mc2-flag{width:40px;height:27px}
+.mc2-featured .mc2-name{font-size:15px}
+.mc2-featured .result-score{font-size:32px}
 .upcoming-section{margin-top:16px}
 .upcoming-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
 
 /* ── GROUP TABLE ── */
-.group-table{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius) var(--radius) 0 0;overflow:hidden;margin-bottom:0}
+.group-table{background:var(--dark-2);border:1px solid var(--dark-4);border-radius:var(--radius);overflow:hidden;margin-bottom:0}
 .gt-head{display:grid;grid-template-columns:24px 1fr 28px 28px 28px 28px 48px 36px 36px;align-items:center;gap:2px;padding:8px 10px;background:var(--dark-3);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .gt-row{display:grid;grid-template-columns:24px 1fr 28px 28px 28px 28px 48px 36px 36px;align-items:center;gap:2px;padding:8px 10px;border-top:1px solid var(--dark-4);cursor:pointer;transition:background .15s;font-size:12px}
 .gt-row:hover{background:var(--dark-3)}
@@ -179,10 +174,8 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;f
 .legend-m{color:#fb923c}
 
 /* group+match block */
-.matches-section{margin-top:0}
-.matches-section-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px;background:var(--dark-3);border:1px solid var(--dark-4);border-top:none}
-.matches-section .match-card{border-radius:0}
-.matches-section:last-child .match-card:last-child{border-radius:0 0 var(--radius) var(--radius)}
+.matches-section{margin-top:18px}
+.matches-section-title{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:0 2px 9px}
 
 /* ── TEAM MODAL ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:flex-end;justify-content:center;padding:0 0 80px}

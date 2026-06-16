@@ -585,7 +585,7 @@ function MatchEvents({events, match}) {
 }
 
 // ── MATCH CARD ────────────────────────────────────────────────────────────────
-function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false, allTips=[], allUsers=[], allEvents={}}) {
+function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false, featured=false, allTips=[], allUsers=[], allEvents={}}) {
   const kickoff = parseMatchDate(match)
   const locked = now >= kickoff
   const isLive = now >= kickoff && now.getTime() <= kickoff.getTime() + 110*60*1000
@@ -607,48 +607,71 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
   const homeCode = TEAMS[match.home]?.code
   const awayCode = TEAMS[match.away]?.code
 
+  const grpLbl = isKo
+    ? ({R32:'Sechzehntelfinale',QF:'Viertelfinale',SF:'Halbfinale',P3:'Platz 3',FIN:'Finale'}[match.group]||match.group)
+    : `Gruppe ${match.group}`
+  const hStr = TEAMS[match.home]?.strength, aStr = TEAMS[match.away]?.strength
+
   return (
-    <div className={`match-card${result?' has-result':''}${locked?' locked':''}`}>
-      <div className="match-meta">
-        {isLive && <span className="live-dot" />}
-        {match.date} · {match.time} CEST
-        {showDeadline && <span className="deadline-badge">&lt;1h</span>}
-        {venue && !compact && <span className="match-venue"> · 🏟️ {venue.stadium}, {venue.city} ({venue.cap.toLocaleString()})</span>}
+    <div className={`match-card mc2${featured?' mc2-featured':''}${result?' has-result':''}${locked?' locked':''}`}>
+      {featured ? (
+        <div className="mc2-head">
+          <span className="mc2-grp">{grpLbl}</span>
+          {isLive ? <span className="mc2-livebadge"><span className="live-dot"/>LIVE</span>
+            : !locked ? <Countdown kickoff={kickoff}/>
+            : null}
+        </div>
+      ) : (
+        <div className="match-meta">
+          {isLive && <span className="live-dot" />}
+          {match.date} · {match.time} CEST
+          {showDeadline && <span className="deadline-badge">&lt;1h</span>}
+          <span className="mc2-metagrp"> · {grpLbl}</span>
+        </div>
+      )}
+
+      <div className="mc2-row">
+        <div className="mc2-team" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.home)}>
+          {homeCode && <img src={flagUrl(homeCode)} className="mc2-flag" alt=""/>}
+          <span className="mc2-name">{match.home}</span>
+          {!isKo && hStr!=null && <span className="mc2-str" style={{color:strengthColor(hStr),background:strengthColor(hStr)+'24'}}>{hStr}</span>}
+        </div>
+
+        <div className="mc2-center">
+          {result ? (
+            <>
+              <div className="result-score">{result.homeGoals}<span className="score-sep">:</span>{result.awayGoals}</div>
+              {tip!=null
+                ? <div className="mc2-yourtip">Tipp {tip.homeGoals}:{tip.awayGoals} {ptsLabel(pts)}</div>
+                : <div className="no-tip-label">kein Tipp abgegeben</div>}
+            </>
+          ) : locked ? (
+            <>
+              <div className="tip-locked-score">{tip!=null?`${tip.homeGoals}:${tip.awayGoals}`:'?:?'}</div>
+              <div className="mc2-tiplabel">{tip!=null?'Dein Tipp':'Kein Tipp'}</div>
+            </>
+          ) : (
+            <>
+              {featured && <div className="mc2-time">{match.time} CEST</div>}
+              <div className="tip-inputs-row">
+                <input className="tip-inp" type="number" min="0" max="99" value={h} onChange={e=>setH(e.target.value)} onBlur={handleBlur} placeholder="–" />
+                <span className="score-sep-input">:</span>
+                <input className="tip-inp" type="number" min="0" max="99" value={a} onChange={e=>setA(e.target.value)} onBlur={handleBlur} placeholder="–" />
+              </div>
+              <div className="mc2-tiplabel">Dein Tipp{tip!=null&&h!==''&&<span className="saved-tick"> ✓</span>}</div>
+            </>
+          )}
+        </div>
+
+        <div className="mc2-team" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.away)}>
+          {awayCode && <img src={flagUrl(awayCode)} className="mc2-flag" alt=""/>}
+          <span className="mc2-name">{match.away}</span>
+          {!isKo && aStr!=null && <span className="mc2-str" style={{color:strengthColor(aStr),background:strengthColor(aStr)+'24'}}>{aStr}</span>}
+        </div>
       </div>
 
-      <div className="mc-row">
-        <div className="mc-home" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.home)}>
-          <span className="mc-tname">{match.home}</span>
-          {homeCode && <img src={flagUrl(homeCode)} className="mc-flag" alt=""/>}
-        </div>
-
-        <div className="mc-center">
-          {result
-            ? <div className="result-score">{result.homeGoals}<span className="score-sep">:</span>{result.awayGoals}</div>
-            : locked
-              ? <div className="tip-locked-score">{tip!=null?`${tip.homeGoals}:${tip.awayGoals}`:'?:?'}</div>
-              : <div className="tip-inputs-row">
-                  <input className="tip-inp" type="number" min="0" max="99" value={h} onChange={e=>setH(e.target.value)} onBlur={handleBlur} placeholder="–" />
-                  <span className="score-sep-input">:</span>
-                  <input className="tip-inp" type="number" min="0" max="99" value={a} onChange={e=>setA(e.target.value)} onBlur={handleBlur} placeholder="–" />
-                </div>
-          }
-          {pts!=null && <div className="pts-row">{ptsLabel(pts)}</div>}
-          {locked&&pts==null&&!result&&tip==null && <div className="no-tip-label">kein Tipp</div>}
-          {!locked&&tip!=null&&h!=='' && <div className="saved-tick">✓</div>}
-        </div>
-
-        <div className="mc-away" onClick={()=>!isKo&&onTeamClick&&onTeamClick(match.away)}>
-          {awayCode && <img src={flagUrl(awayCode)} className="mc-flag" alt=""/>}
-          <span className="mc-tname">{match.away}</span>
-        </div>
-      </div>
-      {!isKo && (
-        <div className="mc-str-row">
-          <span style={{color:strengthColor(TEAMS[match.home]?.strength||0), textAlign:'right'}}>{TEAMS[match.home]?.strength}</span>
-          <span/>
-          <span style={{color:strengthColor(TEAMS[match.away]?.strength||0), textAlign:'left'}}>{TEAMS[match.away]?.strength}</span>
-        </div>
+      {featured && venue && (
+        <div className="mc2-venue">📍 {venue.stadium} · {venue.city}</div>
       )}
 
       {isKoGroup&&tipIsDraw&&!locked&&!result && (
@@ -703,47 +726,21 @@ function NextView({tips, results, now, uid, onSave, onTeamClick, allTips=[], all
   return (
     <div>
       <div className="next-header">
-        <span className="next-label">⚡ Nächste Spiele</span>
-        <Countdown kickoff={upcoming[0].kickoff} />
+        <span className="next-label">⚡ {concurrent.length>1?'Nächste Spiele':'Nächstes Spiel'}</span>
       </div>
       {concurrent.length>1 && (
         <div className="concurrent-note">
           ℹ️ {concurrent.length} Spiele gleichzeitig · {upcoming[0].date} · {upcoming[0].time} CEST
         </div>
       )}
-      {concurrent.map(m=>{
-        const venue=VENUES[m.id]
-        return (
-          <div key={m.id} className="next-match-card">
-            <div className="next-match-top">
-              <span className="next-group-badge">Gruppe {m.group}</span>
-              {venue && <span className="next-venue">🏟 {venue.stadium} · {venue.city} · {venue.cap.toLocaleString()} Plätze</span>}
-            </div>
-            <div className="next-teams-row">
-              <div className="next-team" onClick={()=>onTeamClick&&onTeamClick(m.home)}>
-                {TEAMS[m.home]?.code && <img src={flagUrl(TEAMS[m.home].code)} className="next-flag" alt={m.home} />}
-                <span className="next-team-name">{m.home}</span>
-                <span className="next-str" style={{color:strengthColor(TEAMS[m.home]?.strength||0)}}>{TEAMS[m.home]?.strength}</span>
-              </div>
-              <div className="next-vs-col">
-                <div className="next-vs">VS</div>
-                <div className="next-time">{m.time} CEST</div>
-              </div>
-              <div className="next-team right" onClick={()=>onTeamClick&&onTeamClick(m.away)}>
-                <span className="next-str" style={{color:strengthColor(TEAMS[m.away]?.strength||0)}}>{TEAMS[m.away]?.strength}</span>
-                <span className="next-team-name">{m.away}</span>
-                {TEAMS[m.away]?.code && <img src={flagUrl(TEAMS[m.away].code)} className="next-flag" alt={m.away} />}
-              </div>
-            </div>
-            <MatchCard match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
-          </div>
-        )
-      })}
+      {concurrent.map(m=>(
+        <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} featured allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
+      ))}
       {upcoming.length>concurrent.length && (
         <div className="upcoming-section">
-          <div className="upcoming-title">Weitere bevorstehende Spiele</div>
+          <div className="upcoming-title">Weitere Spiele</div>
           {upcoming.slice(concurrent.length, concurrent.length+6).map(m=>(
-            <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} compact allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
+            <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
           ))}
         </div>
       )}
