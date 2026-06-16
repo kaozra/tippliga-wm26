@@ -1444,7 +1444,7 @@ function UserStatsModal({user, allTips, results, board, onClose}) {
 }
 
 // ── RANGLISTEN-VERLAUF ────────────────────────────────────────────────────────
-function RangVerlauf({board, allTips, results}) {
+function RangVerlauf({board, allTips, results, uid}) {
   const [open, setOpen] = useState(false)
 
   // Played matches sorted chronologically
@@ -1472,15 +1472,19 @@ function RangVerlauf({board, allTips, results}) {
     return rankMap
   })
 
-  const W=320, H=140, PAD=24
   const n = checkpoints.length
   const userCount = board.length
-  const xStep = n>1?(W-PAD*2)/(n-1):0
+  // Layout: Linien links, Namen rechts mit reserviertem Platz (kein Abschneiden mehr)
+  const rowH = Math.max(18, Math.min(24, Math.round(250/userCount)))
+  const padT = 14, padB = 16
+  const H = padT + padB + (userCount-1)*rowH
+  const W = 400, x0 = 28, x1 = 236, lblX = 246
+  const xStep = n>1 ? (x1-x0)/(n-1) : 0
+  const xPos = i => x0 + i*xStep
+  const yPos = rank => padT + (rank-1)*rowH
 
-  function yPos(rank) { return PAD+(rank-1)/(userCount-1||1)*(H-PAD*2) }
-  function xPos(i) { return PAD+i*xStep }
-
-  const COLORS=['#FFD700','#C0C0C0','#CD7F32','#4CC9F0','#9B5DE5','#F72585','#06D6A0','#FB8500']
+  // 12 gut unterscheidbare Farben (vorher nur 8 → Wiederholungen)
+  const COLORS=['#FFD700','#4CC9F0','#F72585','#06D6A0','#9B5DE5','#FB8500','#4895EF','#80ED99','#FF6B6B','#C77DFF','#FFC857','#B0B8D8']
 
   return (
     <div className="rang-verlauf">
@@ -1489,32 +1493,31 @@ function RangVerlauf({board, allTips, results}) {
       </button>
       {open && (
         <div className="rang-verlauf-chart">
-          <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto',overflow:'visible'}}>
-            {/* Grid lines */}
+          <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto'}}>
+            {/* Rang-Gitterlinien */}
             {board.map((_,i)=>(
-              <line key={i} x1={PAD} y1={yPos(i+1)} x2={W-PAD} y2={yPos(i+1)} stroke="var(--dark-4)" strokeWidth="1"/>
+              <line key={i} x1={x0} y1={yPos(i+1)} x2={x1} y2={yPos(i+1)} style={{stroke:'var(--dark-4)'}} strokeWidth="1"/>
             ))}
-            {/* Lines per user */}
+            {/* Spieltag-Nummern */}
+            {checkpoints.map((_,i)=>(
+              <text key={'d'+i} x={xPos(i)} y={H-3} style={{fill:'var(--muted)'}} fontSize="7.5" textAnchor="middle">{i+1}</text>
+            ))}
+            {/* Linie + Label pro Spieler */}
             {board.map((u,ui)=>{
-              const pts=checkpoints.map(cp=>cp[u.uid]||userCount)
+              const ranks=checkpoints.map(cp=>cp[u.uid]||userCount)
               const color=COLORS[ui%COLORS.length]
-              const lastRank=pts[pts.length-1]
+              const me=u.uid===uid
+              const firstRank=ranks[0], lastRank=ranks[ranks.length-1]
               return (
                 <g key={u.uid}>
-                  <polyline points={pts.map((rank,i)=>`${xPos(i)},${yPos(rank)}`).join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity=".85"/>
-                  <circle cx={xPos(pts.length-1)} cy={yPos(lastRank)} r="4" fill={color}/>
-                  <text x={xPos(pts.length-1)+6} y={yPos(lastRank)+4} fill={color} fontSize="9" fontWeight="700">{u.displayName?.split(' ')[0]}</text>
+                  <polyline points={ranks.map((rank,i)=>`${xPos(i)},${yPos(rank)}`).join(' ')} fill="none" stroke={color} strokeWidth={me?3.4:2.2} strokeLinejoin="round" strokeLinecap="round" opacity={me?1:.9}/>
+                  <text x={xPos(0)} y={yPos(firstRank)} dx="-5" dy="3" fill={color} fontSize="8" textAnchor="end" fontWeight="700">{firstRank}</text>
+                  <circle cx={xPos(n-1)} cy={yPos(lastRank)} r={me?5:4} fill={color}/>
+                  <text x={lblX} y={yPos(lastRank)} dy="3.2" fill={color} fontSize="10.5" fontWeight={me?700:500}>{u.displayName?.split(' ')[0]}{me?' ◄':''}</text>
                 </g>
               )
             })}
           </svg>
-          <div className="rang-verlauf-legend">
-            {board.map((u,ui)=>(
-              <span key={u.uid} className="rv-legend-item" style={{color:COLORS[ui%COLORS.length]}}>
-                ● {u.displayName?.split(' ')[0]}
-              </span>
-            ))}
-          </div>
         </div>
       )}
     </div>
@@ -1644,7 +1647,7 @@ function RanglisteTab({uid, results}) {
             </div>
           )}
 
-          {board.length>1 && <RangVerlauf board={board} allTips={allTips} results={results}/>}
+          {board.length>1 && <RangVerlauf board={board} allTips={allTips} results={results} uid={uid}/>}
         </>
       )}
       {selectedUser && <UserStatsModal user={selectedUser} allTips={allTips} results={results} board={board} onClose={()=>setSelectedUser(null)}/>}
