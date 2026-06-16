@@ -244,6 +244,11 @@ const GROUPS = {
   L:['England','Kroatien','Ghana','Panama'],
 }
 
+// Bracket-Hälfte: Gruppen A-H → Sieger SF1/SF2 → Final; I-L → Sieger SF3/SF4 → Final
+const TEAM_TO_GROUP = {}
+Object.entries(GROUPS).forEach(([g, teams]) => teams.forEach(t => { TEAM_TO_GROUP[t] = g }))
+const BRACKET_HALF1 = new Set(['A','B','C','D','E','F','G','H'])
+
 // ── MATCHES ───────────────────────────────────────────────────────────────────
 const MATCHES = [
   {id:'A1',group:'A',home:'Mexiko',away:'Südafrika',date:'11.06.2026',time:'21:00'},
@@ -933,8 +938,8 @@ function SonderView({uid, now}) {
   return (
     <div className="sonder-wrap">
       <div className="sonder-info-row">
-        <div className="sonder-info-text">Richtig getippt = <b>3×</b> die normalen Punkte. Tipps sperren mit WM-Beginn am 11. Juni.</div>
-        <div className={`sonder-lock-badge${locked?' locked':''}`}>{locked ? '🔒 Gesperrt' : '🔓 Offen bis 11.06.'}</div>
+        <div className="sonder-info-text">Richtig getippt = <b>3×</b> die normalen Punkte. Deadline: <b>20. Juni 18:00 CEST</b>.</div>
+        <div className={`sonder-lock-badge${locked?' locked':''}`}>{locked ? '🔒 Gesperrt' : '🔓 Offen bis 20.06. 18:00'}</div>
       </div>
       {hasResults && (
         <div className="sonder-total-row">Meine Sonder-Punkte: <b className="sonder-total-pts">{myPts}</b></div>
@@ -944,7 +949,19 @@ function SonderView({uid, now}) {
         const res = sonderResults?.[q.id]
         const isCorrect = !!(res && val && val === res)
         const isWrong   = !!(res && val && val !== res)
-        const options   = q.type === 'group' ? groupNames : q.type === 'stage' ? STAGE_OPTIONS : teamNames
+        const options   = q.type === 'group' ? groupNames
+          : q.type === 'stage' ? STAGE_OPTIONS
+          : q.id === 'finalist' && myTip.weltmeister
+            ? (() => {
+                const wg = TEAM_TO_GROUP[myTip.weltmeister]
+                const wH1 = wg && BRACKET_HALF1.has(wg)
+                return teamNames.filter(t => {
+                  if (t === myTip.weltmeister) return false
+                  const tg = TEAM_TO_GROUP[t]
+                  return !tg || (BRACKET_HALF1.has(tg) !== wH1)
+                })
+              })()
+            : teamNames
         return (
           <div key={q.id} className={`sonder-card${isCorrect?' s-correct':isWrong?' s-wrong':''}`}>
             <div className="sonder-card-top">
@@ -979,6 +996,11 @@ function SonderView({uid, now}) {
                     </option>
                   ))}
                 </select>
+                {q.id === 'finalist' && myTip.weltmeister && (
+                  <div className="sonder-bracket-hint">
+                    ℹ️ Nur Teams aus der anderen Bracket-Hälfte – {myTip.weltmeister} kann nicht gleichzeitig Weltmeister und Finalist sein
+                  </div>
+                )}
               )}
             </div>
           </div>
