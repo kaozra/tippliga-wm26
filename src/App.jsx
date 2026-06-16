@@ -360,7 +360,8 @@ function parseMatchDate(m) {
 }
 const KO_GROUPS = ['R32','QF','SF','P3','FIN']
 
-const SONDER_LOCK = new Date(2026, 5, 11, 21, 0) // 11. Juni 21:00 CEST
+const SONDER_LOCK = new Date(2026, 5, 20, 18, 0) // 20. Juni 18:00 CEST
+const STAGE_OPTIONS = ['Vorrunde','Achtelfinale','Viertelfinale','Halbfinale','Platz 3','Finalist','Weltmeister']
 const SONDER = [
   {id:'weltmeister',   icon:'🏆', label:'Weltmeister',          desc:'Welches Team gewinnt die WM 2026?',                                   pts:9, type:'team'},
   {id:'finalist',      icon:'🥈', label:'Finalist',             desc:'Welches Team verliert das Finale?',                                   pts:6, type:'team'},
@@ -368,6 +369,7 @@ const SONDER = [
   {id:'topteam',       icon:'⚽', label:'Top-Torjäger-Team',    desc:'Aus welchem Team kommt der Torschützenkönig?',                       pts:6, type:'team'},
   {id:'ueberraschung', icon:'💥', label:'Überraschungsteam',    desc:'Welcher Aussenseiter (Stärke ≤72) kommt ins Halbfinale?',            pts:9, type:'team'},
   {id:'topgruppe',     icon:'🔥', label:'Tor-Gruppe',           desc:'Welche Gruppe erzielt in der Vorrunde die meisten Tore?',            pts:6, type:'group'},
+  {id:'schweiz_stage', icon:'🇨🇭', label:'Wo landet die Schweiz?', desc:'Wie weit kommt die Schweiz an der WM 2026?',                    pts:6, type:'stage'},
 ]
 
 function calcSonderPoints(sonderTip, sonderResults) {
@@ -942,7 +944,7 @@ function SonderView({uid, now}) {
         const res = sonderResults?.[q.id]
         const isCorrect = !!(res && val && val === res)
         const isWrong   = !!(res && val && val !== res)
-        const options   = q.type === 'group' ? groupNames : teamNames
+        const options   = q.type === 'group' ? groupNames : q.type === 'stage' ? STAGE_OPTIONS : teamNames
         return (
           <div key={q.id} className={`sonder-card${isCorrect?' s-correct':isWrong?' s-wrong':''}`}>
             <div className="sonder-card-top">
@@ -960,6 +962,7 @@ function SonderView({uid, now}) {
                     <>
                       {q.type==='team' && TEAMS[val]?.code &&
                         <img src={`https://flagcdn.com/w20/${TEAMS[val].code}.webp`} className="sonder-ans-flag" alt=""/>}
+                      {q.type==='stage' && <span className="sonder-ans-stage-icon">📍</span>}
                       <span className="sonder-ans-val">{val}</span>
                       {isCorrect && <span className="sonder-verdict sonder-correct">✓ +{q.pts} Pkt</span>}
                       {isWrong   && <><span className="sonder-verdict sonder-wrong">✗</span>{res && <span className="sonder-verdict-hint"> → {res}</span>}</>}
@@ -990,7 +993,11 @@ function TippenTab({uid, results}) {
   const [allTips, setAllTips] = useState([])
   const [allUsers, setAllUsers] = useState([])
   const [allEvents, setAllEvents] = useState({})
-  const [filter, setFilter] = useState('NEXT')
+  const [filter, setFilter] = useState(() => {
+    const f = localStorage.getItem('tippen_goto_filter')
+    if (f) { localStorage.removeItem('tippen_goto_filter'); return f }
+    return 'NEXT'
+  })
   const [selectedTeam, setSelectedTeam] = useState(null)
   const sliderRef = useRef(null)
   const [now, setNow] = useState(new Date())
@@ -1740,7 +1747,7 @@ function AdminSonderCard() {
     <div className="admin-match">
       <div className="admin-match-title">⭐ Sondertipp-Ergebnisse setzen</div>
       {SONDER.map(q => {
-        const options = q.type === 'group' ? groupNames : teamNames
+        const options = q.type === 'group' ? groupNames : q.type === 'stage' ? STAGE_OPTIONS : teamNames
         return (
           <div key={q.id} style={{marginBottom:12}}>
             <div style={{fontSize:12,color:'var(--muted)',marginBottom:4}}>{q.icon} {q.label} ({q.pts} Pkt)</div>
@@ -1750,7 +1757,7 @@ function AdminSonderCard() {
               onChange={e => setVals(prev => ({...prev, [q.id]: e.target.value}))}
             >
               <option value="">— Noch kein Ergebnis —</option>
-              {options.map(o => <option key={o} value={o}>{q.type==='team'?`${o} (${TEAMS[o]?.strength})`:`Gruppe ${o}`}</option>)}
+              {options.map(o => <option key={o} value={o}>{q.type==='team'?`${o} (${TEAMS[o]?.strength})`:q.type==='group'?`Gruppe ${o}`:o}</option>)}
             </select>
           </div>
         )
@@ -1859,9 +1866,28 @@ function LoginForm({onSwitch}) {
 }
 
 // ── ROOT ──────────────────────────────────────────────────────────────────────
+// ── SONDER POPUP ─────────────────────────────────────────────────────────────
+function SonderPopup({ onClose, onGo }) {
+  return (
+    <div className="sonder-popup-overlay" onClick={onClose}>
+      <div className="sonder-popup" onClick={e => e.stopPropagation()}>
+        <div className="sonder-popup-icon">⭐</div>
+        <div className="sonder-popup-title">Sondertipps sind offen!</div>
+        <div className="sonder-popup-text">
+          Tippe jetzt auf Weltmeister, Finalist, Überraschungsteam und mehr.<br/>
+          <strong>Deadline: 20. Juni 2026, 18:00 CEST</strong>
+        </div>
+        <button className="sonder-popup-cta" onClick={onGo}>Jetzt Sondertipps ausfüllen ⭐</button>
+        <button className="sonder-popup-dismiss" onClick={onClose}>Später</button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [authUser,setAuthUser]=useState(undefined), [profile,setProfile]=useState(null), [results,setResults]=useState({})
   const [tab,setTab]=useState(()=>localStorage.getItem('activeTab')||'tippen'), [authMode,setAuthMode]=useState('login')
+  const [showSonderPopup,setShowSonderPopup]=useState(false)
   const [theme,setTheme]=useState(()=>localStorage.getItem('theme')||'dark')
   useEffect(()=>{ document.documentElement.setAttribute('data-theme',theme); localStorage.setItem('theme',theme) },[theme])
   const [installPrompt,setInstallPrompt]=useState(null)
@@ -1884,7 +1910,10 @@ export default function App() {
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async u=>{
       setAuthUser(u)
-      if(u){const snap=await getDoc(doc(db,'users',u.uid));if(snap.exists()) setProfile(snap.data());else setProfile(null)}
+      if(u){
+        const snap=await getDoc(doc(db,'users',u.uid));if(snap.exists()) setProfile(snap.data());else setProfile(null)
+        if(!localStorage.getItem('sonder_popup_v2')) setShowSonderPopup(true)
+      }
       else setProfile(null)
     }); return unsub
   },[])
@@ -1911,6 +1940,8 @@ export default function App() {
     </div>
   )
   const isAdmin=authUser.email?.toLowerCase()===ADMIN_EMAIL
+  function dismissSonderPopup(){ localStorage.setItem('sonder_popup_v2','1'); setShowSonderPopup(false) }
+  function goToSonder(){ localStorage.setItem('tippen_goto_filter','SONDER'); dismissSonderPopup(); setTab('tippen') }
   const navItems=[
     {id:'tippen',    icon:'⚽', label:'Tippen'},
     {id:'spielplan', icon:<CalendarDays size={20} strokeWidth={1.5}/>, label:'Spielplan'},
@@ -1939,6 +1970,7 @@ export default function App() {
           <button onClick={()=>setShowIosHint(false)}>✕</button>
         </div>
       )}
+      {showSonderPopup && <SonderPopup onClose={dismissSonderPopup} onGo={goToSonder}/>}
       <div className="app-content">
         {tab==='tippen'    && <TippenTab uid={authUser.uid} results={results}/>}
         {tab==='spielplan' && <SpielplanTab results={results}/>}
