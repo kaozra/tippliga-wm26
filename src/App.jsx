@@ -1569,7 +1569,7 @@ function RanglisteTab({uid, results}) {
     const stats = board.map(u=>{
       const myT = allTips.filter(t=>t.uid===u.uid)
       const played = myT.filter(t=>{ const r=results[t.matchId]; return r&&r.homeGoals!=null })
-      const exact = played.filter(t=>calcPoints(t,results[t.matchId])===3).length
+      const exact = played.filter(t=>calcPoints(t,results[t.matchId])===5).length
       const zeros = played.filter(t=>(calcPoints(t,results[t.matchId])||0)===0).length
       const scored = played.filter(t=>(calcPoints(t,results[t.matchId])||0)>0).length
       const quote = played.length>0?scored/played.length:0
@@ -1690,8 +1690,8 @@ function ProfilTab({user, profile, results, onProfileUpdate}) {
   const playedMatches = MATCHES.filter(m=>{ const r=results[m.id]; return r&&r.homeGoals!=null })
   const tippedPlayed = myTips.filter(t=>{ const r=results[t.matchId]; return r&&r.homeGoals!=null })
   const pts = tippedPlayed.reduce((s,t)=>s+(calcPoints(t,results[t.matchId])||0),0)
-  const maxPts = tippedPlayed.length * 3
-  const exact = tippedPlayed.filter(t=>calcPoints(t,results[t.matchId])===3).length
+  const maxPts = tippedPlayed.length * 5
+  const exact = tippedPlayed.filter(t=>calcPoints(t,results[t.matchId])===5).length
   const scored = tippedPlayed.filter(t=>(calcPoints(t,results[t.matchId])||0)>0).length
   const quote = tippedPlayed.length>0 ? Math.round(scored/tippedPlayed.length*100) : 0
 
@@ -1726,7 +1726,7 @@ function ProfilTab({user, profile, results, onProfileUpdate}) {
           <div className="my-stats-grid">
             <div className="my-stat"><div className="my-stat-val">{pts}<span className="my-stat-max">/{maxPts}</span></div><div className="my-stat-lbl">Punkte</div></div>
             <div className="my-stat"><div className="my-stat-val">{quote}<span className="my-stat-max">%</span></div><div className="my-stat-lbl">Tipp-Quote</div></div>
-            <div className="my-stat"><div className="my-stat-val">{exact}</div><div className="my-stat-lbl">Exakt (3P)</div></div>
+            <div className="my-stat"><div className="my-stat-val">{exact}</div><div className="my-stat-lbl">Exakt (5P)</div></div>
             <div className="my-stat"><div className="my-stat-val">{myTips.length}<span className="my-stat-max">/{MATCHES.length}</span></div><div className="my-stat-lbl">Getippt</div></div>
             <div className="my-stat"><div className="my-stat-val">{streak}</div><div className="my-stat-lbl">Aktuelle Serie</div></div>
             <div className="my-stat"><div className="my-stat-val">{rank>0?`#${rank}`:'–'}</div><div className="my-stat-lbl">Rang</div></div>
