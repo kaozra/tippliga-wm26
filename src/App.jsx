@@ -996,19 +996,21 @@ function SonderView({uid, now}) {
                   ) : <span className="sonder-no-pick">Kein Tipp abgegeben</span>}
                 </div>
               ) : (
-                <select className="sonder-select" value={val} onChange={e => saveTip(q.id, e.target.value)}>
-                  <option value="">— Bitte wählen —</option>
-                  {options.map(o => (
-                    <option key={o} value={o}>
-                      {q.type==='team' ? `${o} (${TEAMS[o]?.strength})` : `Gruppe ${o}`}
-                    </option>
-                  ))}
-                </select>
-                {q.id === 'finalist' && myTip.weltmeister && (
-                  <div className="sonder-bracket-hint">
-                    ℹ️ Nur Teams aus der anderen Bracket-Hälfte – {myTip.weltmeister} kann nicht gleichzeitig Weltmeister und Platz 2 sein
-                  </div>
-                )}
+                <>
+                  <select className="sonder-select" value={val} onChange={e => saveTip(q.id, e.target.value)}>
+                    <option value="">— Bitte wählen —</option>
+                    {options.map(o => (
+                      <option key={o} value={o}>
+                        {q.type==='team' ? `${o} (${TEAMS[o]?.strength})` : `Gruppe ${o}`}
+                      </option>
+                    ))}
+                  </select>
+                  {q.id === 'finalist' && myTip.weltmeister && (
+                    <div className="sonder-bracket-hint">
+                      ℹ️ Nur Teams aus der anderen Bracket-Hälfte – {myTip.weltmeister} kann nicht gleichzeitig Weltmeister und Platz 2 sein
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
