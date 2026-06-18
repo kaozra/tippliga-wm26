@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import appCodeRaw from './App.jsx?raw'
 import { Crosshair, Star, Flame, Skull, PenLine, Sun, Moon, Download, Share, CalendarDays, Crown } from 'lucide-react'
 import { initializeApp } from 'firebase/app'
 import {
@@ -360,12 +361,15 @@ const MATCHES = [
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function parseMatchDate(m) {
-  const [d,mo,y] = m.date.split('.'), [h,min] = m.time.split(':')
-  return new Date(+y,+mo-1,+d,+h,+min)
+  const [d, mo, y] = m.date.split('.');
+  const [h, min] = m.time.split(':');
+  // WM 2026 takes place in summer, so CEST is UTC+2
+  // We construct an ISO string to parse it explicitly with the +02:00 offset
+  return new Date(`${y}-${mo}-${d}T${h}:${min}:00+02:00`);
 }
 const KO_GROUPS = ['R32','QF','SF','P3','FIN']
 
-const SONDER_LOCK = new Date(2026, 5, 20, 18, 0) // 20. Juni 18:00 CEST
+const SONDER_LOCK = new Date(`2026-06-20T18:00:00+02:00`) // 20. Juni 18:00 CEST
 const STAGE_OPTIONS = ['Vorrunde','Achtelfinale','Viertelfinale','Halbfinale','Platz 3','Finalist','Weltmeister']
 const SONDER = [
   {id:'weltmeister',   icon:'🏆', label:'Weltmeister',          desc:'Welches Team gewinnt die WM 2026?',                                   pts:9, type:'team'},
@@ -553,8 +557,9 @@ function GroupTable({group, results, onTeamClick}) {
 }
 
 // ── MATCH EVENTS ─────────────────────────────────────────────────────────────
-function MatchEvents({events, match}) {
-  const [open, setOpen] = useState(false)
+function MatchEvents({events, match, isLive=false}) {
+  const [open, setOpen] = useState(isLive)
+  useEffect(()=>{ if(isLive) setOpen(true) }, [isLive])
   const goals = events.filter(e=>e.type==='Goal')
   const cards = events.filter(e=>e.type==='Card')
   return (
@@ -588,7 +593,7 @@ function MatchEvents({events, match}) {
 function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false, featured=false, allTips=[], allUsers=[], allEvents={}}) {
   const kickoff = parseMatchDate(match)
   const locked = now >= kickoff
-  const isLive = now >= kickoff && now.getTime() <= kickoff.getTime() + 110*60*1000
+  const isLive = (now >= kickoff && now.getTime() <= kickoff.getTime() + 115*60*1000) || result?.status === 'LIVE'
   const isKo = !TEAMS[match.home]
   const isKoGroup = KO_GROUPS.includes(match.group)
   const [h, setH] = useState(tip?.homeGoals??'')
@@ -599,6 +604,25 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
   const tipIsDraw = h!==''&&a!==''&&+h===+a
   const resultIsDraw = result&&result.homeGoals!=null&&result.homeGoals===result.awayGoals
   const showDeadline = !locked && !tip && (kickoff - now) <= 3600000
+
+  const currentEvents = allEvents[match.id] || []
+  let liveHomeGoals = isLive && !result ? 0 : null
+  let liveAwayGoals = isLive && !result ? 0 : null
+  if (isLive && !result && currentEvents.length > 0) {
+     currentEvents.forEach(e => {
+        if (e.type === 'Goal') {
+           const isHome = e.teamName === match.home || TEAM_MAP_DE[e.teamName] === match.home
+           const isOwnGoal = e.detail === 'Own Goal'
+           if (isHome) {
+              if (isOwnGoal) liveAwayGoals++
+              else liveHomeGoals++
+           } else {
+              if (isOwnGoal) liveHomeGoals++
+              else liveAwayGoals++
+           }
+        }
+     })
+  }
 
   useEffect(()=>{setH(tip?.homeGoals??''); setA(tip?.awayGoals??''); setPenWinner(tip?.penaltyWinner||null)},[tip])
   function handleBlur(){if(h!==''&&a!=='') onSave(match.id,h,a,isKoGroup&&+h===+a?penWinner:null)}
@@ -645,6 +669,13 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
                 ? <div className="mc2-yourtip">Tipp {tip.homeGoals}:{tip.awayGoals} {ptsLabel(pts)}</div>
                 : <div className="no-tip-label">kein Tipp abgegeben</div>}
             </>
+          ) : (isLive && liveHomeGoals != null) ? (
+            <>
+              <div className="result-score" style={{color: 'var(--red)'}}>{liveHomeGoals}<span className="score-sep">:</span>{liveAwayGoals}</div>
+              {tip!=null
+                ? <div className="mc2-yourtip">Dein Tipp {tip.homeGoals}:{tip.awayGoals}</div>
+                : <div className="no-tip-label">kein Tipp abgegeben</div>}
+            </>
           ) : locked ? (
             <>
               <div className="tip-locked-score">{tip!=null?`${tip.homeGoals}:${tip.awayGoals}`:'?:?'}</div>
@@ -689,8 +720,8 @@ function MatchCard({match, tip, result, now, onSave, onTeamClick, compact=false,
       )}
 
       {locked && <MatchTipsPanel matchId={match.id} allTips={allTips} allUsers={allUsers} result={result} />}
-      {result && allEvents[match.id]?.length > 0 && (
-        <MatchEvents events={allEvents[match.id]} match={match} />
+      {(result || isLive) && currentEvents.length > 0 && (
+        <MatchEvents events={currentEvents} match={match} isLive={isLive} />
       )}
     </div>
   )
@@ -712,74 +743,67 @@ function Countdown({kickoff}) {
   return <span className="countdown-txt">{txt}</span>
 }
 
-// ── NEXT VIEW ─────────────────────────────────────────────────────────────────
-function NextView({tips, results, now, uid, onSave, onTeamClick, allTips=[], allUsers=[], allEvents={}}) {
-  const upcoming = MATCHES
-    .filter(m=>!['R32','QF','SF','P3','FIN'].includes(m.group))
+// ── LIVE VIEW ─────────────────────────────────────────────────────────────────
+function LiveView({tips, results, now, uid, onSave, onTeamClick, allTips=[], allUsers=[], allEvents={}}) {
+  const allParsed = MATCHES
     .map(m=>({...m,kickoff:parseMatchDate(m)}))
-    .filter(m=>m.kickoff>now)
-    .sort((a,b)=>a.kickoff-b.kickoff)
-  if(!upcoming.length) return <p style={{color:'var(--muted)',textAlign:'center',padding:20}}>Alle Spiele sind abgeschlossen.</p>
-  const nextTs = upcoming[0].kickoff.getTime()
-  const concurrent = upcoming.filter(m=>m.kickoff.getTime()===nextTs)
+    
+  const liveMatches = allParsed.filter(m => (now >= m.kickoff && now.getTime() <= m.kickoff.getTime() + 115*60*1000) || results[m.id]?.status === 'LIVE')
+
+  if(!liveMatches.length) return <p style={{color:'var(--muted)',textAlign:'center',padding:20}}>Aktuell finden keine Spiele statt.</p>
 
   return (
     <div>
       <div className="next-header">
-        <span className="next-label">⚡ {concurrent.length>1?'Nächste Spiele':'Nächstes Spiel'}</span>
+        <span className="next-label" style={{color: 'var(--red)'}}><span className="live-dot"/> Aktuelles Spiel (LIVE)</span>
       </div>
-      {concurrent.length>1 && (
-        <div className="concurrent-note">
-          ℹ️ {concurrent.length} Spiele gleichzeitig · {upcoming[0].date} · {upcoming[0].time} CEST
-        </div>
-      )}
-      {concurrent.map(m=>(
+      {liveMatches.map(m=>(
         <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} featured allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
       ))}
-      {upcoming.length>concurrent.length && (
+    </div>
+  )
+}
+
+// ── NEXT VIEW ─────────────────────────────────────────────────────────────────
+function NextView({tips, results, now, uid, onSave, onTeamClick, allTips=[], allUsers=[], allEvents={}}) {
+  const allParsed = MATCHES
+    .map(m=>({...m,kickoff:parseMatchDate(m)}))
+    
+  const upcoming = allParsed
+    .filter(m=>m.kickoff>now)
+    .sort((a,b)=>a.kickoff-b.kickoff)
+    
+  if(!upcoming.length) return <p style={{color:'var(--muted)',textAlign:'center',padding:20}}>Alle Spiele sind abgeschlossen.</p>
+  
+  const nextTs = upcoming.length > 0 ? upcoming[0].kickoff.getTime() : null
+  const concurrent = nextTs ? upcoming.filter(m=>m.kickoff.getTime()===nextTs) : []
+  const further = upcoming.slice(concurrent.length, concurrent.length+6)
+
+  return (
+    <div>
+      {concurrent.length > 0 && (
+        <>
+          <div className="next-header">
+            <span className="next-label">⚡ {concurrent.length>1?'Nächste Spiele':'Nächstes Spiel'}</span>
+          </div>
+          {concurrent.length>1 && (
+            <div className="concurrent-note">
+              ℹ️ {concurrent.length} Spiele gleichzeitig · {upcoming[0].date} · {upcoming[0].time} CEST
+            </div>
+          )}
+          {concurrent.map(m=>(
+            <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} featured allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
+          ))}
+        </>
+      )}
+      {further.length > 0 && (
         <div className="upcoming-section">
           <div className="upcoming-title">Weitere Spiele</div>
-          {upcoming.slice(concurrent.length, concurrent.length+6).map(m=>(
+          {further.map(m=>(
             <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-// ── GROUP VIEW ────────────────────────────────────────────────────────────────
-function GroupView({group, tips, results, now, onSave, onTeamClick, allTips=[], allUsers=[], allEvents={}}) {
-  const groupMatches = MATCHES.filter(m=>m.group===group)
-  const upcoming = groupMatches.filter(m=>parseMatchDate(m)>now)
-  const played = groupMatches.filter(m=>results[m.id]&&results[m.id].homeGoals!=null)
-  return (
-    <div>
-      <GroupTable group={group} results={results} onTeamClick={onTeamClick} />
-      {played.length>0 && (
-        <div className="matches-section">
-          <div className="matches-section-title">Gespielte Spiele</div>
-          {played.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />)}
-        </div>
-      )}
-      {upcoming.length>0 && (
-        <div className="matches-section">
-          <div className="matches-section-title">Nächste Spiele</div>
-          {upcoming.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />)}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── KO VIEW ───────────────────────────────────────────────────────────────────
-function KoView({koGroup, tips, results, now, onSave, onTeamClick, allTips=[], allUsers=[], allEvents={}}) {
-  const koLabels={R32:'⚡ Sechzehntelfinale',QF:'🏆 Viertelfinale',SF:'🔥 Halbfinale',P3:'🥉 Platz 3',FIN:'🥇 Finale'}
-  const matches = MATCHES.filter(m=>m.group===koGroup)
-  return (
-    <div>
-      <div className="ko-section-title">{koLabels[koGroup]||koGroup}</div>
-      {matches.map(m=><MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />)}
     </div>
   )
 }
@@ -816,7 +840,7 @@ function SpielplanTab({ results }) {
   function SpRow({ m }) {
     const r = results[m.id]
     const kickoff = parseMatchDate(m)
-    const isLive = now>=kickoff && now<=new Date(kickoff.getTime()+115*60*1000)
+    const isLive = (now>=kickoff && now<=new Date(kickoff.getTime()+115*60*1000)) || r?.status === 'LIVE'
     const isDone = r && r.homeGoals!=null
     const isKo = KO_GROUPS.includes(m.group)
     const grpLbl = isKo
@@ -910,6 +934,54 @@ function MatchTipsPanel({matchId, allTips, allUsers, result}) {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── COMBINED MATCHES VIEW ──────────────────────────────────────────────────
+function CombinedMatchesView({type, tips, results, now, uid, onSave, onTeamClick, allTips=[], allUsers=[], allEvents={}}) {
+  const allParsed = MATCHES.map(m=>({...m,kickoff:parseMatchDate(m)}))
+  
+  const sections = []
+  const groupOrder = [...Object.keys(GROUPS), ...KO_GROUPS]
+  const koLabels={R32:'⚡ Sechzehntelfinale',QF:'🏆 Viertelfinale',SF:'🔥 Halbfinale',P3:'🥉 Platz 3',FIN:'🥇 Finale'}
+
+  for (const g of groupOrder) {
+    const isKo = KO_GROUPS.includes(g)
+    const matches = allParsed.filter(m => m.group === g)
+    
+    let sectionMatches = matches.filter(m => {
+       const hasTip = tips[m.id] != null
+       if (type === 'OFFEN') return !hasTip && m.kickoff > now
+       if (type === 'GETIPPT') return hasTip || (m.kickoff <= now && !hasTip) // Getippte Spiele UND verpasste Spiele
+       return false
+    })
+    
+    if (sectionMatches.length > 0) {
+      sections.push({
+         groupId: g,
+         title: isKo ? koLabels[g]||g : `Gruppe ${g}`,
+         matches: sectionMatches
+      })
+    }
+  }
+
+  if (sections.length === 0) {
+    return <p style={{color:'var(--muted)',textAlign:'center',padding:20}}>Keine Spiele in dieser Kategorie.</p>
+  }
+
+  return (
+    <div>
+      {sections.map(sec => (
+        <div key={sec.groupId} style={{marginBottom: 24}}>
+          <div className="next-header" style={{borderBottom: '1px solid var(--dark-4)', paddingBottom: '8px'}}>
+             <span className="next-label">{sec.title}</span>
+          </div>
+          {sec.matches.map(m => (
+             <MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} now={now} onSave={onSave} onTeamClick={onTeamClick} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />
+          ))}
+        </div>
+      ))}
     </div>
   )
 }
@@ -1034,7 +1106,7 @@ function TippenTab({uid, results}) {
 
   useEffect(()=>{
     if(!uid) return
-    const unsub = onSnapshot(collection(db,'tips'), snap=>{
+    const unsubTips = onSnapshot(collection(db,'tips'), snap=>{
       const t={}, all=[]
       snap.docs.forEach(d=>{
         const data=d.data()
@@ -1044,7 +1116,15 @@ function TippenTab({uid, results}) {
       setTips(t)
       setAllTips(all)
     })
-    return unsub
+    const unsubEvents = onSnapshot(collection(db,'events'), snap=>{
+      const evs={}
+      snap.docs.forEach(d=>evs[d.id]=d.data().events||[])
+      setAllEvents(evs)
+    })
+    const unsubUsers = onSnapshot(collection(db,'users'), snap=>{
+      setAllUsers(snap.docs.map(d=>({uid:d.id, ...d.data()})))
+    })
+    return () => { unsubTips(); unsubEvents(); unsubUsers(); }
   },[uid])
 
   useEffect(()=>{
@@ -1067,41 +1147,49 @@ function TippenTab({uid, results}) {
     await setDoc(doc(db,'tips',`${uid}__${matchId}`),data)
   }
 
-  const filterItems = [
-    {id:'NEXT',   label:'⚡ Nächste'},
-    {id:'SONDER', label:'⭐ Sonder'},
-    ...Object.keys(GROUPS).map(g=>({id:g, label:`Gr. ${g}`})),
-    {id:'R32', label:'Sechzehntelfinale'},
-    {id:'QF',  label:'Viertelfinale'},
-    {id:'SF',  label:'Halbfinale'},
-    {id:'P3',  label:'Platz 3'},
-    {id:'FIN', label:'Finale'},
-  ]
+  const allParsed = MATCHES.map(m=>({...m,kickoff:parseMatchDate(m)}))
+  const liveMatches = allParsed.filter(m => (now >= m.kickoff && now.getTime() <= m.kickoff.getTime() + 115*60*1000) || results[m.id]?.status === 'LIVE')
+
+  // Auto-switch to LIVE if there are live matches and we just mounted
+  useEffect(() => {
+    if (filter === 'NEXT' && liveMatches.length > 0 && !localStorage.getItem('tippen_goto_filter_handled')) {
+      setFilter('LIVE')
+      localStorage.setItem('tippen_goto_filter_handled', 'true')
+    } else if (filter === 'LIVE' && liveMatches.length === 0) {
+      setFilter('NEXT')
+    }
+  }, [liveMatches.length])
 
   return (
     <div>
-      <div className="pts-legend">
+      {/* Navigation */}
+      <div className="tippen-nav" style={{padding: '12px', borderBottom: '1px solid var(--dark-4)', background: 'var(--dark-2)', display: 'flex', gap: '8px', overflowX: 'auto'}}>
+        {liveMatches.length > 0 && (
+          <button className={`filter-btn${filter==='LIVE'?' active':''}`} style={filter==='LIVE'?{background:'var(--red)',color:'#fff',borderColor:'var(--red)'}:{}} onClick={()=>setFilter('LIVE')}>
+            🔴 Live
+          </button>
+        )}
+        <button className={`filter-btn${filter==='NEXT'?' active':''}`} onClick={()=>setFilter('NEXT')}>⚡ Nächste</button>
+        <button className={`filter-btn${filter==='SONDER'?' active':''}`} onClick={()=>setFilter('SONDER')}>⭐ Sonder</button>
+        <button className={`filter-btn${filter==='OFFEN'?' active':''}`} onClick={()=>setFilter('OFFEN')}>📝 Offen</button>
+        <button className={`filter-btn${filter==='GETIPPT'?' active':''}`} onClick={()=>setFilter('GETIPPT')}>✅ Getippt</button>
+      </div>
+
+      {/* Content */}
+      <div style={{marginTop:12}}>
+        {filter==='LIVE'   && <LiveView tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
+        {filter==='NEXT'   && <NextView tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
+        {filter==='SONDER' && <SonderView uid={uid} now={now} />}
+        {filter==='OFFEN'  && <CombinedMatchesView type="OFFEN" tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
+        {filter==='GETIPPT'  && <CombinedMatchesView type="GETIPPT" tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
+      </div>
+
+      <div className="pts-legend" style={{marginTop: 30, background: 'transparent', border: 'none', borderTop: '1px solid var(--dark-4)'}}>
         <span className="pts-legend-item"><span className="pts-3">⭐ 5</span> Exaktes Resultat</span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item"><span className="pts-2">✓ 3</span> Richtige Tendenz</span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item"><span className="pts-1">~ 1</span> Nur Sieger</span>
-      </div>
-      {/* Horizontal scroll slider */}
-      <div className="group-filter-slider" ref={sliderRef}>
-        {filterItems.map(f=>(
-          <button key={f.id} className={`filter-btn${filter===f.id?' active':''}`} onClick={()=>setFilter(f.id)}>
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div style={{marginTop:12}}>
-        {filter==='NEXT'   && <NextView tips={tips} results={results} now={now} uid={uid} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
-        {filter==='SONDER' && <SonderView uid={uid} now={now} />}
-        {filter in GROUPS  && <GroupView group={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
-        {['R32','QF','SF','P3','FIN'].includes(filter) && <KoView koGroup={filter} tips={tips} results={results} now={now} onSave={saveTip} onTeamClick={setSelectedTeam} allTips={allTips} allUsers={allUsers} allEvents={allEvents} />}
       </div>
 
       {selectedTeam && <TeamModal team={selectedTeam} onClose={()=>setSelectedTeam(null)} results={results} />}
@@ -1772,13 +1860,157 @@ function EinladenTab({profile}) {
   )
 }
 
+// ── GLOBAL BACKGROUND SYNC ────────────────────────────────────────────────────────────
+function BackgroundSyncer({results}) {
+  const [lastSync, setLastSync] = useState(null)
+  
+  useEffect(() => {
+     let timer
+     async function doSync() {
+       try {
+         const r = await fetch(`https://api.openligadb.de/getmatchdata/wm26/2026`)
+         if (!r.ok) return
+         const data = await r.json()
+         
+         const TEAM_FIX = { 'Bosnien und Herzegowina': 'Bosnien-Herzegowina', 'Saudi Arabien': 'Saudi-Arabien' }
+         const fixTeam = t => TEAM_FIX[t] || t || ''
+         const LOOKUP = {}; MATCHES.forEach(m => { LOOKUP[`${m.home}|${m.away}`] = m.id })
+         
+         let anyChanges = false
+         for (const x of data) {
+           const t1 = fixTeam(x.team1?.teamName), t2 = fixTeam(x.team2?.teamName)
+           let matchId = LOOKUP[`${t1}|${t2}`], swap = false
+           if (!matchId) { matchId = LOOKUP[`${t2}|${t1}`]; swap = true }
+           if (!matchId) continue
+           
+           const res = x.matchResults || []
+           const fin = res.find(r => r.resultTypeID === 2) || res[res.length - 1]
+           
+           if (fin) {
+             const homeGoals = swap ? fin.pointsTeam2 : fin.pointsTeam1
+             const awayGoals = swap ? fin.pointsTeam1 : fin.pointsTeam2
+             
+             // Only update if changed
+             const existing = results[matchId]
+             if (!existing || existing.homeGoals !== homeGoals || existing.awayGoals !== awayGoals) {
+               await setDoc(doc(db, 'results', matchId), {
+                 homeGoals, awayGoals, matchId, status: x.matchIsFinished ? 'FT' : 'LIVE',
+                 updatedAt: serverTimestamp(), source: 'openligadb'
+               }, { merge: true })
+               anyChanges = true
+             }
+           }
+           
+           // Update events
+           const goalsSeq = [...(x.goals || [])].sort((a,b)=>(a.matchMinute||0)-(b.matchMinute||0))
+           let s1=0, s2=0; const eventsOut = []
+           for (const g of goalsSeq) {
+             const d1 = (g.scoreTeam1 ?? s1) - s1
+             s1 = g.scoreTeam1 ?? s1; s2 = g.scoreTeam2 ?? s2
+             const team = g.isOwnGoal ? (d1>0 ? t2:t1) : (d1>0 ? t1:t2)
+             eventsOut.push({
+               time: g.matchMinute || 0, type: 'Goal',
+               detail: g.isOwnGoal ? 'Own Goal' : g.isPenalty ? 'Penalty' : 'Normal Goal',
+               player: (g.goalGetterName || '').trim() || '—', teamName: team
+             })
+           }
+           
+           if (eventsOut.length > 0 && x.matchIsFinished === false) {
+             await setDoc(doc(db, 'events', matchId), { matchId, events: eventsOut, updatedAt: serverTimestamp() }, { merge: true })
+           }
+         }
+         
+         setLastSync(new Date())
+       } catch (e) {
+         console.error('LigaSync Error', e)
+       }
+       scheduleNext()
+     }
+     
+     function scheduleNext() {
+       clearTimeout(timer)
+       const now = new Date()
+       
+       const allParsed = MATCHES.map(m=>parseMatchDate(m))
+       
+       let isLive = Object.values(results).some(r => r.status === 'LIVE')
+       let nextMatchStart = null
+       let nextMatchEnd = null
+
+       for (const ko of allParsed) {
+          const mEnd = new Date(ko.getTime() + 115 * 60000)
+          
+          if (now >= ko && now <= mEnd) {
+             isLive = true
+          }
+          if (ko > now) {
+             if (!nextMatchStart || ko < nextMatchStart) nextMatchStart = ko
+          }
+          if (mEnd > now) {
+             if (!nextMatchEnd || mEnd < nextMatchEnd) nextMatchEnd = mEnd
+          }
+       }
+       
+       let dt = 60000 * 60 // Default 1 hour if nothing is happening
+       
+       if (isLive) {
+          // If a game is live, sync every minute
+          dt = 60000
+       } else {
+          // Next event is either a match starting or ending.
+          // Wake up 1 minute after match ends, or exactly when next match starts
+          const nextEvent = nextMatchStart && nextMatchEnd 
+             ? (nextMatchStart < nextMatchEnd ? nextMatchStart : nextMatchEnd)
+             : (nextMatchStart || nextMatchEnd)
+             
+          if (nextEvent) {
+             let diff = nextEvent.getTime() - now.getTime()
+             
+             // If the next event is a match ENDING (115mins), check exactly 1 min after ending
+             if (nextEvent.getTime() === nextMatchEnd?.getTime()) {
+               diff += 60000 // wait 1 min after match completion to check OpenLigaDB
+             }
+             
+             // Max wait 1 hour just to refresh
+             if (diff > 0 && diff < dt) {
+                dt = diff
+             }
+          }
+       }
+       
+       // Max wait 1 hour before next sync check
+       dt = Math.max(10000, Math.min(dt, 60000 * 60))
+       timer = setTimeout(doSync, dt)
+     }
+
+     // Initial sync when opening app, then it schedules automatically 
+     // but to spread load let's random wait 1-3 seconds on startup
+     timer = setTimeout(doSync, 1000 + Math.random() * 2000)
+     
+     return () => clearTimeout(timer)
+  }, [results])
+
+  return null
+}
+
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
 function AdminTab({results}) {
   const [filter, setFilter] = useState('A')
   const keys=[...Object.keys(GROUPS),'R32','QF','SF','P3','FIN','SONDER']
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(appCodeRaw)
+    alert('Code wurde in die Zwischenablage kopiert! Füge ihn nun in GitHub am Handy ein.')
+  }
   return (
     <div>
       <div className="section-title">⚙️ Admin</div>
+      <div style={{background: 'var(--card-bg)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid var(--border)'}}>
+        <h4 style={{margin: '0 0 8px 0', fontSize: '1rem'}}>Mobile Code Export</h4>
+        <p style={{margin: '0 0 12px 0', fontSize: '0.85rem', color: 'var(--muted)'}}>Da am Smartphone Git-Push schwierig ist, kannst du hier den kompletten Code kopieren und auf der GitHub Seite direkt einfügen.</p>
+        <button className="btn" onClick={handleCopyCode} style={{width: '100%', display: 'flex', justifyContent: 'center'}}>
+          <Download size={18} /> App.jsx Code Kopieren
+        </button>
+      </div>
       <div className="group-filter-slider">
         {keys.map(k=><button key={k} className={`filter-btn${filter===k?' active':''}`} onClick={()=>setFilter(k)}>{k==='SONDER'?'⭐ Sonder':k}</button>)}
       </div>
@@ -2055,6 +2287,7 @@ export default function App() {
           <button onClick={()=>setShowIosHint(false)}>✕</button>
         </div>
       )}
+      <BackgroundSyncer results={results} />
       {showSonderPopup && <SonderPopup onClose={dismissSonderPopup} onGo={goToSonder}/>}
       <div className="app-content">
         {tab==='tippen'    && <TippenTab uid={authUser.uid} results={results}/>}
