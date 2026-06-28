@@ -1495,8 +1495,7 @@ function calcSonderPoints(sonderTip, sonderResults) {
 }
 
 function calcPoints(tip, result) {
-  if (!result || result.homeGoals == null || result.awayGoals == null)
-    return null;
+  if (!hasMatchScore(result)) return null;
   const th = tip.homeGoals,
     ta = tip.awayGoals,
     rh = result.homeGoals,
@@ -1514,6 +1513,9 @@ function calcPoints(tip, result) {
   if (exact) return 5;
   if (correctTendency) return th === rh || ta === ra ? 3 : 1;
   return 0;
+}
+function hasMatchScore(result) {
+  return result?.homeGoals != null && result?.awayGoals != null;
 }
 function ptsLabel(pts) {
   if (pts === 5) return <span className="pts-3">⭐ 5 Pkt</span>;
@@ -2012,6 +2014,7 @@ function MatchCard({
 }) {
   const kickoff = parseMatchDate(match);
   const locked = now >= kickoff;
+  const hasResult = hasMatchScore(result);
   const isLive =
     (now >= kickoff && now.getTime() <= kickoff.getTime() + 115 * 60 * 1000) ||
     result?.status === "LIVE";
@@ -2020,7 +2023,7 @@ function MatchCard({
   const [h, setH] = useState(tip?.homeGoals ?? "");
   const [a, setA] = useState(tip?.awayGoals ?? "");
   const [penWinner, setPenWinner] = useState(tip?.penaltyWinner || null);
-  const pts = result && tip ? calcPoints(tip, result) : null;
+  const pts = hasResult && tip ? calcPoints(tip, result) : null;
   const venue = VENUES[match.id];
   const tipIsDraw = h !== "" && a !== "" && +h === +a;
   const resultIsDraw =
@@ -2028,9 +2031,9 @@ function MatchCard({
   const showDeadline = !locked && !tip && kickoff - now <= 3600000;
 
   const currentEvents = allEvents[match.id] || [];
-  let liveHomeGoals = isLive && !result ? 0 : null;
-  let liveAwayGoals = isLive && !result ? 0 : null;
-  if (isLive && !result && currentEvents.length > 0) {
+  let liveHomeGoals = isLive && !hasResult ? 0 : null;
+  let liveAwayGoals = isLive && !hasResult ? 0 : null;
+  if (isLive && !hasResult && currentEvents.length > 0) {
     currentEvents.forEach((e) => {
       if (e.type === "Goal") {
         const isHome =
@@ -2109,7 +2112,7 @@ function MatchCard({
 
   return (
     <div
-      className={`match-card mc2${featured ? " mc2-featured" : ""}${result ? " has-result" : ""}${locked ? " locked" : ""}`}
+      className={`match-card mc2${featured ? " mc2-featured" : ""}${hasResult ? " has-result" : ""}${locked ? " locked" : ""}`}
     >
       {featured ? (
         <div className="mc2-head">
@@ -2205,7 +2208,7 @@ function MatchCard({
         </div>
 
         <div className="mc2-center">
-          {result ? (
+          {hasResult ? (
             <>
               <div className="result-score">
                 {result.homeGoals}
@@ -2362,7 +2365,7 @@ function MatchCard({
         </div>
       )}
 
-      {isKoGroup && tipIsDraw && !locked && !result && (
+      {isKoGroup && tipIsDraw && !locked && !hasResult && (
         <div className="pen-row">
           <span className="pen-label">Elfmeter</span>
           <button
@@ -2384,7 +2387,7 @@ function MatchCard({
           {tip.penaltyWinner === "home" ? match.home : match.away} i.E.
         </div>
       )}
-      {isKoGroup && result && resultIsDraw && result.penaltyWinner && (
+      {isKoGroup && hasResult && resultIsDraw && result.penaltyWinner && (
         <div className="pen-locked result">
           {result.penaltyWinner === "home" ? match.home : match.away} i.E.
         </div>
@@ -2395,10 +2398,10 @@ function MatchCard({
           matchId={match.id}
           allTips={allTips}
           allUsers={allUsers}
-          result={result}
+          result={hasResult ? result : null}
         />
       )}
-      {(result || isLive) && currentEvents.length > 0 && (
+      {(hasResult || isLive) && currentEvents.length > 0 && (
         <MatchEvents events={currentEvents} match={match} isLive={isLive} />
       )}
     </div>
