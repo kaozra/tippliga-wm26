@@ -3818,7 +3818,7 @@ const SORT_OPTIONS = [
   { id: "sp", label: "Meiste Spiele" },
 ];
 
-function TabelleTab({ results }) {
+function TabelleTab({ results, onTeamClick }) {
   const [view, setView] = useState("groups"); // 'groups' | 'turnier' | 'spieler' | 'bracket'
   const [sortBy, setSortBy] = useState("pts");
   const [playerStats, setPlayerStats] = useState(null);
@@ -5886,7 +5886,9 @@ export default function App() {
         {tab === "spielplan" && (
           <SpielplanTab results={results} onTeamClick={setSelectedTeam} />
         )}
-        {tab === "tabelle" && <TabelleTab results={results} />}
+        {tab === "tabelle" && (
+          <TabelleTab results={results} onTeamClick={setSelectedTeam} />
+        )}
         {tab === "rangliste" && (
           <RanglisteTab uid={authUser.uid} results={results} />
         )}
