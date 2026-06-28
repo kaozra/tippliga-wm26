@@ -3051,31 +3051,28 @@ function SonderView({ uid, now, results }) {
     await setDoc(doc(db, "sondertips", uid), updateData, { merge: true });
   }
 
-  const myPts = calcSonderPoints(myTip, sonderResults);
-  const hasResults = sonderResults && SONDER.some((q) => sonderResults[q.id]);
+  const currentCompleted = SONDER_KO.filter((q) => myTip[q.id]).length;
+  const previousCompleted = SONDER.filter((q) => myTip[q.id]).length;
 
   return (
     <div className="sonder-wrap">
-      <div
-        className="sonder-section-title"
-        style={{
-          marginTop: 8,
-          marginBottom: 12,
-          fontSize: "1.1rem",
-          fontWeight: 600,
-          color: "var(--blue)",
-          borderBottom: "1px solid var(--dark-4)",
-          paddingBottom: 8,
-        }}
-      >
-        Vorrunden Sondertipps
-      </div>
+      <section className="sonder-section sonder-section-history">
+        <div className="sonder-section-heading">
+          <div>
+            <span className="sonder-section-eyebrow">Bereits abgegeben</span>
+            <h2>Vorrunden-Sondertipps</h2>
+            <p>Deine bisherigen Antworten und ihre spätere Auswertung.</p>
+          </div>
+          <span className="sonder-section-progress">
+            {previousCompleted}/{SONDER.length}
+          </span>
+        </div>
       <div className="sonder-info-row" style={{ marginBottom: 16 }}>
         <div className="sonder-info-text">
-          Deadline war: <b>20. Juni 18:00</b> (Späte Tipps = 0 Pkt).
+          Abgabeschluss war am <b>20. Juni um 18:00 Uhr</b>.
         </div>
         <div className={`sonder-lock-badge${isLateTime ? " locked" : ""}`}>
-          {isLateTime ? "🔓 Offen (0 Pkt)" : "🔓 Offen bis 20.06. 18:00"}
+          {isLateTime ? "🔒 Wertung geschlossen" : "Offen bis 20.06. 18:00"}
         </div>
       </div>
       {SONDER.map((q) => {
@@ -3231,20 +3228,23 @@ function SonderView({ uid, now, results }) {
           </div>
         );
       })}
-      <div
-        className="sonder-section-title"
-        style={{
-          marginTop: 32,
-          marginBottom: 12,
-          fontSize: "1.1rem",
-          fontWeight: 600,
-          color: "var(--red)",
-          borderBottom: "1px solid var(--dark-4)",
-          paddingBottom: 8,
-        }}
-      >
-        🔥 Neue Runde, Neues Glück: KO-Phase Sondertipps
+      </section>
+
+      <div className="sonder-era-divider" role="separator">
+        <span>Frühere Runde</span>
       </div>
+
+      <section className="sonder-section sonder-section-current">
+        <div className="sonder-section-heading current">
+          <div>
+            <span className="sonder-section-eyebrow">Aktuelle Runde</span>
+            <h2>🔥 K.-o.-Sondertipps</h2>
+            <p>Drei neue Fragen für die entscheidende Turnierphase.</p>
+          </div>
+          <span className="sonder-section-progress current">
+            {currentCompleted}/{SONDER_KO.length}
+          </span>
+        </div>
       <div className="sonder-info-row" style={{ marginBottom: 16 }}>
         <div className="sonder-info-text">
           Deadline für diese Tipps: <b>28. Juni 21:00 CEST</b>.
@@ -3253,8 +3253,8 @@ function SonderView({ uid, now, results }) {
           className={`sonder-lock-badge${now >= SONDER_KO_LOCK ? " locked" : ""}`}
         >
           {now >= SONDER_KO_LOCK
-            ? "🔓 Offen (0 Pkt)"
-            : "🔓 Offen bis 28.06. 21:00"}
+            ? "🔒 Wertung geschlossen"
+            : "Offen bis 28.06. 21:00"}
         </div>
       </div>
       <div className="sonder-qualified-note">
@@ -3392,6 +3392,7 @@ function SonderView({ uid, now, results }) {
           </div>
         );
       })}
+      </section>
     </div>
   );
 }

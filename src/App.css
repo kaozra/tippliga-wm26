@@ -2757,8 +2757,109 @@ body {
 .sonder-wrap {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   padding-bottom: 12px;
+}
+.sonder-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sonder-section-current {
+  order: 1;
+}
+.sonder-era-divider {
+  order: 2;
+}
+.sonder-section-history {
+  order: 3;
+}
+.sonder-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px 16px;
+  margin: 8px 0 4px;
+  background: var(--dark-2);
+  border: 1px solid var(--dark-4);
+  border-radius: var(--radius);
+}
+.sonder-section-heading.current {
+  background:
+    radial-gradient(circle at 100% 0, rgba(240, 84, 58, 0.16), transparent 45%),
+    linear-gradient(135deg, rgba(212, 175, 55, 0.1), var(--dark-2) 58%);
+  border-color: rgba(212, 175, 55, 0.3);
+}
+.sonder-section-heading h2 {
+  margin: 3px 0 2px;
+  color: var(--text);
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.7px;
+  line-height: 1.1;
+}
+.sonder-section-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.sonder-section-eyebrow {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.sonder-section-heading.current .sonder-section-eyebrow {
+  color: var(--gold-light);
+}
+.sonder-section-progress {
+  display: grid;
+  place-items: center;
+  min-width: 38px;
+  height: 30px;
+  padding: 0 8px;
+  color: var(--text-dim);
+  background: var(--dark-3);
+  border: 1px solid var(--dark-4);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.sonder-section-progress.current {
+  color: var(--gold-light);
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.28);
+}
+.sonder-era-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 34px 2px 22px;
+  color: var(--muted);
+}
+.sonder-era-divider::before,
+.sonder-era-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--dark-5));
+}
+.sonder-era-divider::after {
+  background: linear-gradient(90deg, var(--dark-5), transparent);
+}
+.sonder-era-divider span {
+  padding: 4px 9px;
+  background: var(--dark-2);
+  border: 1px solid var(--dark-4);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
 }
 .sonder-info-row {
   display: flex;
