@@ -1,16 +1,42 @@
-# React + Vite
+# TippLiga WM26
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React-/Firebase-Tippspiel für die Fußball-WM 2026.
 
-Currently, two official plugins are available:
+## Lokale Entwicklung
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm ci
+npm ci --prefix scripts
+npm run dev
+```
 
-## React Compiler
+Produktions-Build und Sync-Tests:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm run test:sync
+npm run build
+```
 
-## Expanding the ESLint configuration
+## Automatischer Ergebnis-Sync
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+OpenLigaDB liefert Paarungen, Termine, Live-Spielstände, Endresultate und
+Torereignisse. Der Sync unterstützt Gruppenphase und alle K.-o.-Runden sowie
+Verlängerung und Elfmeterschießen.
+
+- `.github/workflows/sync-results.yml` läuft während der WM-Spielfenster alle
+  fünf Minuten und schreibt nur tatsächlich geänderte Daten nach Firestore.
+- Die geöffnete App fragt während laufender Spiele minütlich ab und dient als
+  schneller Live-Fallback.
+- `.github/workflows/sync-playerstats.yml` aktualisiert täglich die
+  Torschützenliste.
+
+Beide GitHub-Workflows benötigen das Repository-Secret
+`FIREBASE_SERVICE_ACCOUNT` mit dem JSON eines Firebase-Service-Accounts. Ein
+fehlendes oder ungültiges Secret lässt den Workflow bewusst fehlschlagen,
+anstatt einen erfolgreichen, aber wirkungslosen Lauf vorzutäuschen.
+
+Manueller Test ohne Firestore-Schreibzugriff:
+
+```bash
+npm run test:sync
+```

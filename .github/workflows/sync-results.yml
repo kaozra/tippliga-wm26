@@ -2,16 +2,25 @@ name: Sync WM 2026 Results
 
 on:
   schedule:
-    # Alle 15 Min in den Spielfenstern (16:00–06:00 UTC = 18:00–08:00 CEST).
-    # OpenLigaDB wird community-gepflegt → Updates kommen verzögert, minütliches Pollen bringt nichts.
-    - cron: '*/15 16-23 * * *'
-    - cron: '*/15 0-6  * * *'
+    # Alle 5 Minuten in den WM-Spielfenstern (UTC). Die Datumsgrenzen verhindern,
+    # dass der einmalige Turnier-Sync nach dem Finale dauerhaft weiterläuft.
+    - cron: '*/5 16-23 28-30 6 *'
+    - cron: '*/5 0-5 28-30 6 *'
+    - cron: '*/5 16-23 1-19 7 *'
+    - cron: '*/5 0-5 1-20 7 *'
   workflow_dispatch:  # manueller Trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-wm-2026-results
+  cancel-in-progress: true
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -21,11 +30,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
 
-      - name: Install dependencies
-        run: npm install firebase-admin
+      - name: Install locked dependencies
+        run: npm ci --omit=dev --prefix scripts
 
-      - name: Run sync
-        run: node scripts/sync-results.mjs
+      - name: Verify sync logic
+        run: npm run test:sync
+
+      - name: Sync fixtures, live scores and results
+        run: npm run sync:results
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

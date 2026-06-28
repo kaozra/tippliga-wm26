@@ -2,12 +2,21 @@ name: Sync WM 2026 Player Stats
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # once daily at 06:00 UTC during WM
+    - cron: '0 6 28-30 6 *'
+    - cron: '0 6 1-20 7 *'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-wm-2026-playerstats
+  cancel-in-progress: true
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
@@ -15,8 +24,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install firebase-admin
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --omit=dev --prefix scripts
       - name: Sync player stats
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: node scripts/sync-playerstats.mjs
+        run: npm run sync:playerstats

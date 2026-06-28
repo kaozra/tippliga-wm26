@@ -4906,7 +4906,11 @@ function EinladenTab({ profile }) {
 
 // ── GLOBAL BACKGROUND SYNC ────────────────────────────────────────────────────────────
 function BackgroundSyncer({ results }) {
-  const [lastSync, setLastSync] = useState(null);
+  const resultsRef = useRef(results);
+
+  useEffect(() => {
+    resultsRef.current = results;
+  }, [results]);
 
   useEffect(() => {
     let timer;
@@ -4917,6 +4921,7 @@ function BackgroundSyncer({ results }) {
         );
         if (!r.ok) return;
         const data = await r.json();
+        const currentResults = resultsRef.current;
 
         const TEAM_FIX = {
           "Bosnien und Herzegowina": "Bosnien-Herzegowina",
@@ -4927,8 +4932,6 @@ function BackgroundSyncer({ results }) {
         MATCHES.forEach((m) => {
           LOOKUP[`${m.home}|${m.away}`] = m.id;
         });
-
-        let anyChanges = false;
 
         // 1. Dynamic KO Stage Syncing
         const groupMap = {
@@ -4952,9 +4955,10 @@ function BackgroundSyncer({ results }) {
               new Date(a.matchDateTimeUTC) - new Date(b.matchDateTimeUTC),
           );
 
-          apiMatches.forEach((x, i) => {
+          for (const [i, x] of apiMatches.entries()) {
             let myId = `${round}${i + 1}`;
-            if (round === "R32") myId = `R32_${i + 1}`;
+            if (round === "R32" || round === "R16")
+              myId = `${round}_${i + 1}`;
             if (round === "P3" || round === "FIN") myId = round;
 
             const t1 = fixTeam(x.team1?.teamName);
@@ -4966,7 +4970,7 @@ function BackgroundSyncer({ results }) {
               const apiTime = x.matchDateTime.split("T")[1].substring(0, 5);
               const dStr = `${apiDate.split("-")[2]}.${apiDate.split("-")[1]}.${apiDate.split("-")[0]}`;
 
-              const existing = results[myId] || {};
+              const existing = currentResults[myId] || {};
               const updates = {};
 
               if (t1 && t1 !== m.home && TEAMS[t1]) {
@@ -4990,7 +4994,7 @@ function BackgroundSyncer({ results }) {
               } else if (existing.koTime) m.time = existing.koTime;
 
               if (Object.keys(updates).length > 0) {
-                setDoc(
+                await setDoc(
                   doc(db, "results", myId),
                   { ...updates, updatedAt: serverTimestamp() },
                   { merge: true },
@@ -5000,7 +5004,7 @@ function BackgroundSyncer({ results }) {
               // Update LOOKUP with the latest dynamic team names so result syncing works
               LOOKUP[`${m.home}|${m.away}`] = m.id;
             }
-          });
+          }
         }
 
         // 2. Results & Events Syncing
@@ -5015,51 +5019,98 @@ function BackgroundSyncer({ results }) {
           }
           if (!matchId) continue;
 
-          const res = x.matchResults || [];
-          const fin =
-            res.find((r) => r.resultTypeID === 2) || res[res.length - 1];
+          const matchResults = x.matchResults || [];
+          const resultByType = (type) =>
+            matchResults.find((result) => Number(result.resultTypeID) === type);
+          const latestResult = [...matchResults].sort(
+            (a, b) =>
+              Number(b.resultOrderID || 0) - Number(a.resultOrderID || 0),
+          )[0];
+          const officialResult = resultByType(2);
+          const extraTimeResult = resultByType(4);
+          const shootoutResult = resultByType(5);
+          const started =
+            Date.now() >= new Date(x.matchDateTimeUTC || x.matchDateTime).getTime();
 
-          if (fin) {
-            const homeGoals = swap ? fin.pointsTeam2 : fin.pointsTeam1;
-            const awayGoals = swap ? fin.pointsTeam1 : fin.pointsTeam2;
+          // Fixture metadata was already handled above. Avoid one Firestore
+          // write per future match from every open browser.
+          if (
+            !started &&
+            !x.matchIsFinished &&
+            matchResults.length === 0 &&
+            (x.goals || []).length === 0
+          )
+            continue;
 
-            // Only update if changed
-            const existing = results[matchId];
-            if (
-              !existing ||
-              existing.homeGoals !== homeGoals ||
-              existing.awayGoals !== awayGoals
-            ) {
-              await setDoc(
-                doc(db, "results", matchId),
-                {
-                  homeGoals,
-                  awayGoals,
-                  matchId,
-                  status: x.matchIsFinished ? "FT" : "LIVE",
-                  updatedAt: serverTimestamp(),
-                  source: "openligadb",
-                },
-                { merge: true },
-              );
-              anyChanges = true;
+          const goalsByTime = [...(x.goals || [])].sort(
+            (a, b) => Number(a.matchMinute || 0) - Number(b.matchMinute || 0),
+          );
+          const latestGoal = goalsByTime[goalsByTime.length - 1];
+          let scoreResult = null;
+          if (x.matchIsFinished) {
+            scoreResult = extraTimeResult || officialResult || latestResult;
+          } else if (started) {
+            scoreResult = latestGoal
+              ? {
+                  pointsTeam1: latestGoal.scoreTeam1,
+                  pointsTeam2: latestGoal.scoreTeam2,
+                }
+              : latestResult || { pointsTeam1: 0, pointsTeam2: 0 };
+          }
+
+          const existing = currentResults[matchId] || {};
+          const resultUpdate = {
+            matchId,
+            source: "openligadb",
+            sourceMatchId: x.matchID,
+            status: x.matchIsFinished ? "FT" : started ? "LIVE" : "SCHEDULED",
+          };
+          if (
+            scoreResult?.pointsTeam1 != null &&
+            scoreResult?.pointsTeam2 != null
+          ) {
+            resultUpdate.homeGoals = swap
+              ? scoreResult.pointsTeam2
+              : scoreResult.pointsTeam1;
+            resultUpdate.awayGoals = swap
+              ? scoreResult.pointsTeam1
+              : scoreResult.pointsTeam2;
+          }
+          if (
+            shootoutResult?.pointsTeam1 != null &&
+            shootoutResult?.pointsTeam2 != null
+          ) {
+            const penaltyHomeGoals = swap
+              ? shootoutResult.pointsTeam2
+              : shootoutResult.pointsTeam1;
+            const penaltyAwayGoals = swap
+              ? shootoutResult.pointsTeam1
+              : shootoutResult.pointsTeam2;
+            if (penaltyHomeGoals !== penaltyAwayGoals) {
+              resultUpdate.penaltyWinner =
+                penaltyHomeGoals > penaltyAwayGoals ? "home" : "away";
+              resultUpdate.penaltyHomeGoals = penaltyHomeGoals;
+              resultUpdate.penaltyAwayGoals = penaltyAwayGoals;
             }
           }
 
           // Update events
-          const goalsSeq = [...(x.goals || [])].sort(
-            (a, b) => (a.matchMinute || 0) - (b.matchMinute || 0),
-          );
           let s1 = 0,
             s2 = 0;
           const eventsOut = [];
-          for (const g of goalsSeq) {
+          for (const g of goalsByTime) {
             const d1 = (g.scoreTeam1 ?? s1) - s1;
             s1 = g.scoreTeam1 ?? s1;
             s2 = g.scoreTeam2 ?? s2;
-            const team = g.isOwnGoal ? (d1 > 0 ? t2 : t1) : d1 > 0 ? t1 : t2;
+            const scoringTeam = d1 > 0 ? t1 : t2;
+            const team = g.isOwnGoal
+              ? scoringTeam === t1
+                ? t2
+                : t1
+              : scoringTeam;
             eventsOut.push({
               time: g.matchMinute || 0,
+              extra: g.matchMinuteExtraTime ?? null,
               type: "Goal",
               detail: g.isOwnGoal
                 ? "Own Goal"
@@ -5067,20 +5118,49 @@ function BackgroundSyncer({ results }) {
                   ? "Penalty"
                   : "Normal Goal",
               player: (g.goalGetterName || "").trim() || "—",
+              assist: g.goalGetterAssistName?.trim() || null,
               teamName: team,
+              scoringTeam,
             });
           }
 
-          if (eventsOut.length > 0 && x.matchIsFinished === false) {
+          const eventPayload = JSON.stringify(eventsOut);
+          let eventHash = 2166136261;
+          for (let i = 0; i < eventPayload.length; i++) {
+            eventHash ^= eventPayload.charCodeAt(i);
+            eventHash = Math.imul(eventHash, 16777619);
+          }
+          const eventsVersion = `${eventsOut.length}-${(eventHash >>> 0).toString(36)}`;
+          if (eventsOut.length > 0) resultUpdate.eventsVersion = eventsVersion;
+
+          const resultChanged = Object.entries(resultUpdate).some(
+            ([key, value]) => existing[key] !== value,
+          );
+          if (resultChanged) {
+            await setDoc(
+              doc(db, "results", matchId),
+              { ...resultUpdate, updatedAt: serverTimestamp() },
+              { merge: true },
+            );
+          }
+
+          if (
+            eventsOut.length > 0 &&
+            existing.eventsVersion !== eventsVersion
+          ) {
             await setDoc(
               doc(db, "events", matchId),
-              { matchId, events: eventsOut, updatedAt: serverTimestamp() },
+              {
+                matchId,
+                events: eventsOut,
+                source: "openligadb",
+                updatedAt: serverTimestamp(),
+              },
               { merge: true },
             );
           }
         }
 
-        setLastSync(new Date());
       } catch (e) {
         console.error("LigaSync Error", e);
       }
@@ -5093,7 +5173,9 @@ function BackgroundSyncer({ results }) {
 
       const allParsed = MATCHES.map((m) => parseMatchDate(m));
 
-      let isLive = Object.values(results).some((r) => r.status === "LIVE");
+      let isLive = Object.values(resultsRef.current).some(
+        (result) => result.status === "LIVE",
+      );
       let nextMatchStart = null;
       let nextMatchEnd = null;
 
@@ -5151,7 +5233,7 @@ function BackgroundSyncer({ results }) {
     timer = setTimeout(doSync, 1000 + Math.random() * 2000);
 
     return () => clearTimeout(timer);
-  }, [results]);
+  }, []);
 
   return null;
 }

@@ -1,0 +1,14 @@
+{
+  "name": "tippliga-wm26-sync",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "sync:playerstats": "node sync-playerstats.mjs",
+    "sync:results": "node sync-results.mjs",
+    "test": "node --test sync-results.test.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.1.0"
+  }
+}

@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "sync:playerstats": "npm --prefix scripts run sync:playerstats",
+    "sync:results": "npm --prefix scripts run sync:results",
+    "test:sync": "npm --prefix scripts test",
     "preview": "vite preview"
   },
   "dependencies": {

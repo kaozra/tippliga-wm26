@@ -6,8 +6,8 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 // OpenLigaDB liefert Torschützen; Vorlagen/Torhüter/Karten gibt es dort nicht.
 
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-  console.warn('[playerstats] ⚠️  FIREBASE_SERVICE_ACCOUNT not set — skipping.')
-  process.exit(0)
+  console.error('[playerstats] FIREBASE_SERVICE_ACCOUNT secret is not configured.')
+  process.exit(1)
 }
 
 let db
@@ -18,7 +18,7 @@ try {
   db = getFirestore()
 } catch (err) {
   console.error('[playerstats] ❌ Firebase init failed:', err.message)
-  process.exit(0)
+  process.exit(1)
 }
 
 const LEAGUE = 'wm26', SEASON = '2026'
@@ -75,4 +75,7 @@ async function syncPlayerStats() {
   console.log('[playerstats] ✅ Done')
 }
 
-syncPlayerStats().catch(err => { console.error('[playerstats] ERROR:', err.message || err); process.exit(0) })
+syncPlayerStats().catch(err => {
+  console.error('[playerstats] ERROR:', err.message || err)
+  process.exitCode = 1
+})
