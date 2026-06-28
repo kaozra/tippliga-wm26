@@ -2634,23 +2634,48 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  backdrop-filter: blur(7px);
 }
 .sonder-popup {
-  background: var(--dark-2);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% -15%, rgba(240, 84, 58, 0.22), transparent 45%),
+    linear-gradient(160deg, var(--dark-2), var(--dark-3));
   border: 1px solid rgba(212, 175, 55, 0.45);
-  border-radius: 16px;
-  padding: 28px 24px;
-  max-width: 340px;
+  border-radius: 22px;
+  padding: 24px;
+  max-width: 370px;
   width: 100%;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+.sonder-popup-kicker {
+  color: var(--gold-light);
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
 }
 .sonder-popup-icon {
-  font-size: 40px;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  font-size: 38px;
   line-height: 1;
+  background: linear-gradient(145deg, rgba(240, 84, 58, 0.25), rgba(212, 175, 55, 0.12));
+  border: 1px solid rgba(240, 84, 58, 0.28);
+  box-shadow: 0 12px 28px rgba(240, 84, 58, 0.16);
 }
 .sonder-popup-title {
   font-family: "Bebas Neue", sans-serif;
@@ -2666,10 +2691,40 @@ body {
 .sonder-popup-text strong {
   color: var(--gold);
 }
+.sonder-popup-deadline {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  text-align: left;
+}
+.sonder-popup-deadline > span {
+  font-size: 20px;
+}
+.sonder-popup-deadline div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sonder-popup-deadline small {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.sonder-popup-deadline strong {
+  color: var(--gold-light);
+  font-size: 14px;
+}
 .sonder-popup-cta {
   width: 100%;
   padding: 12px;
-  background: var(--gold);
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
   color: #000;
   font-family: "DM Sans", sans-serif;
   font-weight: 700;
@@ -2680,6 +2735,7 @@ body {
   letter-spacing: 0.3px;
   margin-top: 4px;
   transition: background 0.2s;
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.2);
 }
 .sonder-popup-cta:hover {
   background: var(--gold-light);
@@ -2722,6 +2778,40 @@ body {
 }
 .sonder-info-text b {
   color: var(--gold);
+}
+.sonder-qualified-note {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  margin: -6px 0 4px;
+  color: var(--green);
+  background: linear-gradient(135deg, rgba(85, 204, 136, 0.1), rgba(85, 204, 136, 0.03));
+  border: 1px solid rgba(85, 204, 136, 0.24);
+  border-radius: var(--radius);
+}
+.sonder-qualified-note span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.sonder-qualified-note strong {
+  color: var(--text);
+  font-size: 12px;
+}
+.sonder-qualified-note b {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(85, 204, 136, 0.15);
+  font-size: 12px;
 }
 .sonder-lock-badge {
   font-size: 11px;
@@ -2831,6 +2921,160 @@ body {
 }
 .sonder-select option {
   background: var(--dark-2);
+}
+
+.sonder-team-picker {
+  position: relative;
+}
+.sonder-team-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--dark-3), var(--dark-4));
+  border: 1px solid var(--dark-4);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+.sonder-team-trigger:hover:not(:disabled),
+.sonder-team-trigger.open {
+  border-color: rgba(212, 175, 55, 0.65);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.08);
+}
+.sonder-team-trigger:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.sonder-team-trigger:disabled {
+  opacity: 0.68;
+  cursor: not-allowed;
+}
+.sonder-team-trigger-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sonder-team-trigger-main img {
+  width: 30px;
+  height: 20px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.25);
+}
+.sonder-team-trigger-main > span:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sonder-team-trigger-main small {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.sonder-team-trigger-main strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sonder-team-placeholder-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: rgba(212, 175, 55, 0.12);
+  font-size: 15px;
+}
+.sonder-team-chevron {
+  color: var(--gold);
+  font-size: 9px;
+}
+.sonder-team-menu {
+  margin-top: 7px;
+  padding: 8px;
+  background: var(--dark-3);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+}
+.sonder-team-menu-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 4px 8px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.sonder-team-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  max-height: 270px;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dark-5) transparent;
+}
+.sonder-team-option {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  color: var(--text-dim);
+  background: var(--dark-2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.16s, border-color 0.16s;
+}
+.sonder-team-option:hover {
+  background: var(--dark-4);
+  border-color: rgba(212, 175, 55, 0.25);
+}
+.sonder-team-option.selected {
+  color: var(--text);
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.45);
+}
+.sonder-team-option img {
+  width: 24px;
+  height: 16px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+.sonder-team-option-name {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sonder-team-strength {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  color: var(--gold-light);
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 800;
 }
 
 .sonder-answer-row {

@@ -1449,6 +1449,7 @@ const SONDER = [
 ];
 
 const SONDER_KO_LOCK = new Date(`2026-06-28T21:00:00+02:00`);
+const SONDER_KO_POPUP_KEY = "sonder_ko_20260628_2100_popup_v2";
 const SONDER_KO = [
   {
     id: "ko_tore",
@@ -2915,13 +2916,117 @@ function CombinedMatchesView({
 
 // ── TIPPEN TAB ────────────────────────────────────────────────────────────────
 // ── SONDERTIPPS ───────────────────────────────────────────────────────────────
-function SonderView({ uid, now }) {
+function getKnockoutTeams(results) {
+  const r32Teams = MATCHES.filter((m) => m.group === "R32").flatMap((m) => {
+    const result = results[m.id] || {};
+    return [result.koHome || m.home, result.koAway || m.away];
+  });
+
+  const groupMatches = MATCHES.filter((m) => GROUPS[m.group]);
+  const groupStageComplete = groupMatches.every((m) => {
+    const result = results[m.id];
+    return result?.homeGoals != null && result?.awayGoals != null;
+  });
+
+  let qualifiedTeams = r32Teams.filter((team) => TEAMS[team]);
+  if (groupStageComplete) {
+    const groupStandings = Object.keys(GROUPS).map((group) =>
+      calcStandings(group, results),
+    );
+    const topTwo = groupStandings.flatMap((standings) =>
+      standings.slice(0, 2).map((team) => team.name),
+    );
+    const bestThirds = groupStandings
+      .map((standings) => standings[2])
+      .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf)
+      .slice(0, 8)
+      .map((team) => team.name);
+    qualifiedTeams = [...topTwo, ...bestThirds];
+  }
+
+  return [...new Set(qualifiedTeams)].sort(
+    (a, b) =>
+      TEAMS[b].strength - TEAMS[a].strength || a.localeCompare(b, "de"),
+  );
+}
+
+function SonderTeamPicker({ options, value, onChange, disabled }) {
+  const [open, setOpen] = useState(false);
+  const pickerRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closePicker = (event) => {
+      if (!pickerRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", closePicker);
+    return () => document.removeEventListener("pointerdown", closePicker);
+  }, [open]);
+
+  return (
+    <div className="sonder-team-picker" ref={pickerRef}>
+      <button
+        type="button"
+        className={`sonder-team-trigger${open ? " open" : ""}${value ? " has-value" : ""}`}
+        onClick={() => setOpen((current) => !current)}
+        disabled={disabled}
+        aria-expanded={open}
+      >
+        <span className="sonder-team-trigger-main">
+          {value && TEAMS[value]?.code ? (
+            <img src={flagUrl(TEAMS[value].code)} alt="" />
+          ) : (
+            <span className="sonder-team-placeholder-icon">⚽</span>
+          )}
+          <span>
+            <small>{value ? "Deine Auswahl" : "Team auswählen"}</small>
+            <strong>{value || "Noch im Turnier"}</strong>
+          </span>
+        </span>
+        <span className="sonder-team-chevron" aria-hidden="true">
+          {open ? "▲" : "▼"}
+        </span>
+      </button>
+
+      {open && !disabled && (
+        <div className="sonder-team-menu">
+          <div className="sonder-team-menu-head">
+            <span>Qualifizierte Teams</span>
+            <span>{options.length} verfügbar</span>
+          </div>
+          <div className="sonder-team-grid">
+            {options.map((team) => (
+              <button
+                type="button"
+                key={team}
+                className={`sonder-team-option${value === team ? " selected" : ""}`}
+                onClick={() => {
+                  onChange(team);
+                  setOpen(false);
+                }}
+              >
+                <img src={flagUrl(TEAMS[team].code)} alt="" />
+                <span className="sonder-team-option-name">{team}</span>
+                <span className="sonder-team-strength">
+                  {value === team ? "✓" : TEAMS[team].strength}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SonderView({ uid, now, results }) {
   const [myTip, setMyTip] = useState({});
   const [sonderResults, setSonderResults] = useState(null);
   const isLateTime = now >= SONDER_LOCK;
   const teamNames = Object.keys(TEAMS).sort(
     (a, b) => TEAMS[b].strength - TEAMS[a].strength,
   );
+  const knockoutTeamNames = getKnockoutTeams(results);
   const groupNames = Object.keys(GROUPS);
 
   useEffect(() => {
@@ -2938,10 +3043,10 @@ function SonderView({ uid, now }) {
     };
   }, [uid]);
 
-  async function saveTip(qid, val) {
+  async function saveTip(qid, val, lockTime = SONDER_LOCK) {
     if (!val) return;
     const updateData = { [qid]: val, updatedAt: serverTimestamp() };
-    if (isLateTime) updateData[`${qid}_late`] = true;
+    if (now >= lockTime) updateData[`${qid}_late`] = true;
     setMyTip((prev) => ({ ...prev, ...updateData }));
     await setDoc(doc(db, "sondertips", uid), updateData, { merge: true });
   }
@@ -3152,6 +3257,14 @@ function SonderView({ uid, now }) {
             : "🔓 Offen bis 28.06. 21:00"}
         </div>
       </div>
+      <div className="sonder-qualified-note">
+        <CheckCircle2 size={18} strokeWidth={1.8} />
+        <span>
+          <strong>Nur noch qualifizierte Teams</strong>
+          Die Auswahl aktualisiert sich aus den K.-o.-Paarungen.
+        </span>
+        <b>{knockoutTeamNames.length}</b>
+      </div>
       {SONDER_KO.map((q) => {
         const val = myTip[q.id] || "";
         const isLateTimeKO = now >= SONDER_KO_LOCK;
@@ -3164,7 +3277,7 @@ function SonderView({ uid, now }) {
         const options =
           q.type === "number"
             ? Array.from({ length: 31 }, (_, i) => String(i))
-            : teamNames;
+            : knockoutTeamNames;
         return (
           <div
             key={q.id}
@@ -3225,162 +3338,32 @@ function SonderView({ uid, now }) {
                 </div>
               ) : (
                 <>
-                  <select
-                    className="sonder-select"
-                    value={val}
-                    onChange={(e) => {
-                      const isLate = now >= SONDER_KO_LOCK;
-                      const updateData = {
-                        [q.id]: e.target.value,
-                        updatedAt: serverTimestamp(),
-                      };
-                      if (isLate) updateData[`${q.id}_late`] = true;
-                      setMyTip((prev) => ({ ...prev, ...updateData }));
-                      setDoc(doc(db, "sondertips", uid), updateData, {
-                        merge: true,
-                      });
-                    }}
-                    disabled={isDisabled}
-                  >
-                    <option value="">— Bitte wählen —</option>
-                    {options.map((o) => (
-                      <option key={o} value={o}>
-                        {q.type === "team" ? `${o} (${TEAMS[o]?.strength})` : o}
-                      </option>
-                    ))}
-                  </select>
-                  {isLateTip && val && (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "var(--red)",
-                        marginTop: 4,
-                      }}
-                    >
-                      ⏱️ Zu spät eingetragen (0 Punkte)
-                    </div>
-                  )}
-                  {isDisabled && (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "var(--green)",
-                        marginTop: 4,
-                      }}
-                    >
-                      ✓ Rechtzeitig abgegeben.
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        );
-      })}
-      {SONDER.map((q) => {
-        const val = myTip[q.id] || "";
-        const isLateTip = !!myTip[`${q.id}_late`];
-        const hasValidTip = val && !isLateTip;
-        const isDisabled = isLateTime && hasValidTip;
-        const res = sonderResults?.[q.id];
-        const isCorrect = !!(res && val && val === res);
-        const isWrong = !!(res && val && val !== res);
-        const options =
-          q.type === "group"
-            ? groupNames
-            : q.type === "stage"
-              ? STAGE_OPTIONS
-              : q.minStr
-                ? teamNames.filter((t) => (TEAMS[t]?.strength || 0) >= q.minStr)
-                : q.id === "finalist" && myTip.weltmeister
-                  ? (() => {
-                      const wg = TEAM_TO_GROUP[myTip.weltmeister];
-                      const wH1 = wg && BRACKET_HALF1.has(wg);
-                      return teamNames.filter((t) => {
-                        if (t === myTip.weltmeister) return false;
-                        const tg = TEAM_TO_GROUP[t];
-                        return !tg || BRACKET_HALF1.has(tg) !== wH1;
-                      });
-                    })()
-                  : teamNames;
-        return (
-          <div
-            key={q.id}
-            className={`sonder-card${isCorrect ? " s-correct" : isWrong ? " s-wrong" : ""}`}
-          >
-            <div className="sonder-card-top">
-              <span className="sonder-q-icon">{q.icon}</span>
-              <div className="sonder-q-info">
-                <div className="sonder-q-label">{q.label}</div>
-                <div className="sonder-q-desc">{q.desc}</div>
-              </div>
-              <div className="sonder-pts-badge">
-                {q.pts}
-                <span className="sonder-pts-sub"> Pkt</span>
-              </div>
-            </div>
-            <div className="sonder-card-body">
-              {res ? (
-                <div className="sonder-answer-row">
-                  {val ? (
-                    <>
-                      {q.type === "team" && TEAMS[val]?.code && (
-                        <img
-                          src={`https://flagcdn.com/w20/${TEAMS[val].code}.webp`}
-                          className="sonder-ans-flag"
-                          alt=""
-                        />
-                      )}
-                      {q.type === "stage" && (
-                        <span className="sonder-ans-stage-icon">📍</span>
-                      )}
-                      <span className="sonder-ans-val">{val}</span>
-                      {isLateTip && (
-                        <span
-                          className="sonder-verdict sonder-wrong"
-                          style={{ marginLeft: 8 }}
-                        >
-                          ⏱️ Zu spät (0 Pkt)
-                        </span>
-                      )}
-                      {isCorrect && !isLateTip && (
-                        <span className="sonder-verdict sonder-correct">
-                          ✓ +{q.pts} Pkt
-                        </span>
-                      )}
-                      {isWrong && !isLateTip && (
-                        <>
-                          <span className="sonder-verdict sonder-wrong">✗</span>
-                          {res && (
-                            <span className="sonder-verdict-hint">
-                              {" "}
-                              → {res}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </>
+                  {q.type === "team" ? (
+                    <SonderTeamPicker
+                      options={options}
+                      value={val}
+                      onChange={(team) =>
+                        saveTip(q.id, team, SONDER_KO_LOCK)
+                      }
+                      disabled={isDisabled}
+                    />
                   ) : (
-                    <span className="sonder-no-pick">Kein Tipp abgegeben</span>
+                    <select
+                      className="sonder-select"
+                      value={val}
+                      onChange={(e) =>
+                        saveTip(q.id, e.target.value, SONDER_KO_LOCK)
+                      }
+                      disabled={isDisabled}
+                    >
+                      <option value="">— Bitte wählen —</option>
+                      {options.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
                   )}
-                </div>
-              ) : (
-                <>
-                  <select
-                    className="sonder-select"
-                    value={val}
-                    onChange={(e) => saveTip(q.id, e.target.value)}
-                    disabled={isDisabled}
-                  >
-                    <option value="">— Bitte wählen —</option>
-                    {options.map((o) => (
-                      <option key={o} value={o}>
-                        {q.type === "team"
-                          ? `${o} (${TEAMS[o]?.strength})`
-                          : `Gruppe ${o}`}
-                      </option>
-                    ))}
-                  </select>
                   {isLateTip && val && (
                     <div
                       style={{
@@ -3401,16 +3384,6 @@ function SonderView({ uid, now }) {
                       }}
                     >
                       ✓ Rechtzeitig abgegeben.
-                    </div>
-                  )}
-                  {q.id === "finalist" && myTip.weltmeister && (
-                    <div className="sonder-bracket-hint flex gap-1.5 items-start">
-                      <Info size={12} className="shrink-0 mt-0.5" />{" "}
-                      <span>
-                        Nur Teams aus der anderen Bracket-Hälfte –{" "}
-                        {myTip.weltmeister} kann nicht gleichzeitig Weltmeister
-                        und Platz 2 sein
-                      </span>
                     </div>
                   )}
                 </>
@@ -3609,7 +3582,9 @@ function TippenTab({ uid, results, onTeamClick: onMatchClick }) {
             allEvents={allEvents}
           />
         )}
-        {filter === "SONDER" && <SonderView uid={uid} now={now} />}
+        {filter === "SONDER" && (
+          <SonderView uid={uid} now={now} results={results} />
+        )}
         {filter === "OFFEN" && (
           <CombinedMatchesView
             type="OFFEN"
@@ -5630,16 +5605,22 @@ function SonderPopup({ onClose, onGo }) {
   return (
     <div className="sonder-popup-overlay" onClick={onClose}>
       <div className="sonder-popup" onClick={(e) => e.stopPropagation()}>
+        <div className="sonder-popup-kicker">Neu · 3 Sonderfragen</div>
         <div className="sonder-popup-icon">🔥</div>
-        <div className="sonder-popup-title">KO-Phase Sondertipps sind da!</div>
+        <div className="sonder-popup-title">K.-o.-Sondertipps sind da!</div>
         <div className="sonder-popup-text">
-          Neue Runde, neues Glück. Tippe auf Tore, Karten und Elfmeter-Dramen in
-          der K.O.-Phase.
-          <br />
-          <strong>Deadline: 28. Juni 2026, 21:00 CEST</strong>
+          Tippe auf Tore, Karten und Elfmeter-Dramen. Bei der Teamwahl siehst du
+          nur Mannschaften, die noch im Turnier sind.
+        </div>
+        <div className="sonder-popup-deadline">
+          <span aria-hidden="true">⏳</span>
+          <div>
+            <small>Abgabeschluss</small>
+            <strong>Heute · 21:00 Uhr</strong>
+          </div>
         </div>
         <button className="sonder-popup-cta" onClick={onGo}>
-          Jetzt ausfüllen 🔥
+          Sondertipps abgeben
         </button>
         <button className="sonder-popup-dismiss" onClick={onClose}>
           Später
@@ -5703,11 +5684,11 @@ export default function App() {
         const sonderData = sonderSnap.exists() ? sonderSnap.data() : {};
         const allKOFilled = SONDER_KO.every((q) => sonderData[q.id]);
         const shownKO = parseInt(
-          localStorage.getItem("sonder_ko_popup_count") || "0",
+          localStorage.getItem(SONDER_KO_POPUP_KEY) || "0",
         );
         if (new Date() < SONDER_KO_LOCK && !allKOFilled && shownKO < 3) {
           setShowSonderPopup(true);
-          localStorage.setItem("sonder_ko_popup_count", String(shownKO + 1));
+          localStorage.setItem(SONDER_KO_POPUP_KEY, String(shownKO + 1));
         }
       } else setProfile(null);
     });
