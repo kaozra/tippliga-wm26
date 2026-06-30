@@ -202,8 +202,11 @@ export function extractMatchState(match, swap = false, now = Date.now()) {
   let score = null;
   if (match.matchIsFinished) {
     // The app stores the football score before penalties and the shootout
-    // winner separately, matching the KO prediction UI.
-    score = scoreOf(extraTime || official || latest, swap);
+    // winner separately. Prefer the cumulative goal score because OpenLigaDB
+    // can expose a non-cumulative or stale extra-time result.
+    score =
+      lastGoalScore(match, swap) ||
+      scoreOf(extraTime || official || latest, swap);
   } else if (timedOut) {
     // OpenLigaDB occasionally leaves matchIsFinished=false long after a game.
     // The cumulative goal score is safer here than a stale period result.

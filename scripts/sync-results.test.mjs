@@ -93,6 +93,25 @@ test("closes a stale live match after four hours using its cumulative goal score
   );
 });
 
+test("prefers cumulative goals when a finished period result is inconsistent", () => {
+  const match = apiMatch({
+    matchIsFinished: true,
+    matchResults: [
+      { resultTypeID: 2, resultOrderID: 2, pointsTeam1: 2, pointsTeam2: 1 },
+      { resultTypeID: 4, resultOrderID: 3, pointsTeam1: 0, pointsTeam2: 1 },
+    ],
+    goals: [
+      { matchMinute: 29, scoreTeam1: 0, scoreTeam2: 1 },
+      { matchMinute: 56, scoreTeam1: 1, scoreTeam2: 1 },
+      { matchMinute: 95, scoreTeam1: 2, scoreTeam2: 1 },
+    ],
+  });
+  const state = extractMatchState(match);
+  assert.equal(state.status, "FT");
+  assert.equal(state.homeGoals, 2);
+  assert.equal(state.awayGoals, 1);
+});
+
 test("stores the football score before penalties and the shootout winner separately", () => {
   const match = apiMatch({
     matchIsFinished: true,

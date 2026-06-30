@@ -5188,7 +5188,12 @@ function BackgroundSyncer({ results }) {
           const latestGoal = goalsByTime[goalsByTime.length - 1];
           let scoreResult = null;
           if (x.matchIsFinished) {
-            scoreResult = extraTimeResult || officialResult || latestResult;
+            scoreResult = latestGoal
+              ? {
+                  pointsTeam1: latestGoal.scoreTeam1,
+                  pointsTeam2: latestGoal.scoreTeam2,
+                }
+              : extraTimeResult || officialResult || latestResult;
           } else if (timedOut) {
             scoreResult = latestGoal
               ? {
