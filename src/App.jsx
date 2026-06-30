@@ -3696,94 +3696,214 @@ function PlayerStatTable({ title, icon, rows, cols }) {
 }
 
 // ── KO BRACKET ────────────────────────────────────────────────────────────────
-function KoBracket({ results }) {
-  const [round, setRound] = useState("R32");
-  const ROUNDS = [
-    { key: "R32", short: "R32", label: "Sechzehntelfinale" },
-    { key: "R16", short: "R16", label: "Achtelfinale" },
-    { key: "QF", short: "QF", label: "Viertelfinale" },
-    { key: "SF", short: "SF", label: "Halbfinale" },
-    { key: "P3", short: "P3", label: "Platz 3" },
-    { key: "FIN", short: "FIN", label: "Finale" },
+function KoBracket({ results, onTeamClick }) {
+  const scrollRef = useRef(null);
+  const roundRefs = useRef({});
+  const [activeRound, setActiveRound] = useState("R32");
+  const rounds = [
+    { key: "R32", short: "1/16", label: "Sechzehntelfinale" },
+    { key: "R16", short: "1/8", label: "Achtelfinale" },
+    { key: "QF", short: "1/4", label: "Viertelfinale" },
+    { key: "SF", short: "1/2", label: "Halbfinale" },
+    { key: "FIN", short: "Final", label: "Finale" },
   ];
-  const matches = MATCHES.filter((m) => m.group === round);
 
-  function BkTeam({ name, win, lose, score }) {
+  function getDisplayMatch(match) {
+    const result = results[match.id] || {};
+    return {
+      ...match,
+      home: result.koHome || match.home,
+      away: result.koAway || match.away,
+      date: result.koDate || match.date,
+      time: result.koTime || match.time,
+      result,
+    };
+  }
+
+  function goToRound(key) {
+    setActiveRound(key);
+    const container = scrollRef.current;
+    const column = roundRefs.current[key];
+    if (!container || !column) return;
+    container.scrollTo({ left: column.offsetLeft - 10, behavior: "smooth" });
+  }
+
+  function handleTreeScroll() {
+    const container = scrollRef.current;
+    if (!container) return;
+    let closest = rounds[0].key;
+    let distance = Number.POSITIVE_INFINITY;
+    rounds.forEach(({ key }) => {
+      const column = roundRefs.current[key];
+      if (!column) return;
+      const currentDistance = Math.abs(column.offsetLeft - container.scrollLeft);
+      if (currentDistance < distance) {
+        closest = key;
+        distance = currentDistance;
+      }
+    });
+    setActiveRound(closest);
+  }
+
+  function BracketTeam({ name, score, winner, loser, penaltyWinner }) {
     const code = TEAMS[name]?.code;
-    return (
-      <div className={`bk-team${win ? " bk-win" : lose ? " bk-lose" : ""}`}>
+    const clickable = !!(code && onTeamClick);
+    const content = (
+      <>
         {code ? (
-          <img src={flagUrl(code)} className="bk-flag" alt="" />
+          <img src={flagUrl(code)} className="kt-flag" alt="" />
         ) : (
-          <span className="bk-flag-ph" />
+          <span className="kt-flag-placeholder">?</span>
         )}
-        <span className="bk-name">{name}</span>
-        {score != null && <span className="bk-score">{score}</span>}
+        <span className="kt-team-name">{name}</span>
+        {penaltyWinner && <span className="kt-penalty">i.E.</span>}
+        {score != null && <span className="kt-score">{score}</span>}
+      </>
+    );
+    return clickable ? (
+      <button
+        type="button"
+        className={`kt-team${winner ? " winner" : ""}${loser ? " loser" : ""}`}
+        onClick={() => onTeamClick(name)}
+      >
+        {content}
+      </button>
+    ) : (
+      <div className={`kt-team${winner ? " winner" : ""}${loser ? " loser" : ""}`}>
+        {content}
       </div>
     );
   }
 
-  function BkMatch({ m }) {
-    const r = results[m.id];
-    const done = r && r.homeGoals != null;
-    const hWin = done && r.homeGoals > r.awayGoals;
-    const aWin = done && r.awayGoals > r.homeGoals;
+  function BracketMatch({ match, roundKey }) {
+    const displayMatch = getDisplayMatch(match);
+    const { result } = displayMatch;
+    const done = hasMatchScore(result);
+    const draw = done && result.homeGoals === result.awayGoals;
+    const homeWon =
+      done &&
+      (result.homeGoals > result.awayGoals ||
+        (draw && result.penaltyWinner === "home"));
+    const awayWon =
+      done &&
+      (result.awayGoals > result.homeGoals ||
+        (draw && result.penaltyWinner === "away"));
+    const live = result.status === "LIVE";
+
     return (
-      <div className={`bk-match${done ? " bk-done" : ""}`}>
-        <BkTeam
-          name={m.home}
-          win={hWin}
-          lose={aWin && !hWin}
-          score={done ? r.homeGoals : null}
+      <article className={`kt-match-card${done ? " completed" : ""}${live ? " live" : ""}`}>
+        <div className="kt-match-meta">
+          <span>{match.id.replace("_", " ")}</span>
+          {live ? (
+            <span className="kt-live"><span /> LIVE</span>
+          ) : done ? (
+            <span className="kt-finished">Endstand</span>
+          ) : (
+            <span>{displayMatch.date.slice(0, 5)} · {displayMatch.time}</span>
+          )}
+        </div>
+        <BracketTeam
+          name={displayMatch.home}
+          score={done ? result.homeGoals : null}
+          winner={homeWon}
+          loser={awayWon}
+          penaltyWinner={draw && result.penaltyWinner === "home"}
         />
-        <div className="bk-sep" />
-        <BkTeam
-          name={m.away}
-          win={aWin}
-          lose={hWin && !aWin}
-          score={done ? r.awayGoals : null}
+        <div className="kt-team-divider" />
+        <BracketTeam
+          name={displayMatch.away}
+          score={done ? result.awayGoals : null}
+          winner={awayWon}
+          loser={homeWon}
+          penaltyWinner={draw && result.penaltyWinner === "away"}
         />
-      </div>
+        {roundKey !== "FIN" && <span className="kt-connector-out" />}
+        {roundKey !== "R32" && <span className="kt-connector-in" />}
+      </article>
     );
   }
 
-  const cols =
-    round === "FIN" || round === "P3"
-      ? 1
-      : round === "SF"
-        ? 2
-        : round === "QF"
-          ? 2
-          : 2;
+  const r32Matches = MATCHES.filter((match) => match.group === "R32");
+  const r32Played = r32Matches.filter((match) =>
+    hasMatchScore(results[match.id]),
+  ).length;
+
   return (
-    <div className="ko-bracket">
-      <div className="bk-tabs">
-        {ROUNDS.map((r) => {
-          const played = MATCHES.filter(
-            (m) => m.group === r.key && results[m.id]?.homeGoals != null,
+    <section className="ko-tree">
+      <div className="kt-hero">
+        <div>
+          <span className="kt-kicker">WM 2026 · K.-o.-Phase</span>
+          <h2>Der Weg zum Titel</h2>
+          <p>Alle Resultate ab dem Sechzehntelfinale auf einen Blick.</p>
+        </div>
+        <div className="kt-progress">
+          <strong>{r32Played}</strong>
+          <span>von 16<br />entschieden</span>
+        </div>
+      </div>
+
+      <nav className="kt-round-nav" aria-label="Turnierrunden">
+        {rounds.map((round) => {
+          const roundMatches = MATCHES.filter((match) => match.group === round.key);
+          const played = roundMatches.filter((match) =>
+            hasMatchScore(results[match.id]),
           ).length;
-          const total = MATCHES.filter((m) => m.group === r.key).length;
           return (
             <button
-              key={r.key}
-              className={`bk-tab${round === r.key ? " active" : ""}`}
-              onClick={() => setRound(r.key)}
+              type="button"
+              key={round.key}
+              className={activeRound === round.key ? "active" : ""}
+              onClick={() => goToRound(round.key)}
             >
-              {r.short}
-              {played > 0 && <span className="bk-tab-dot" />}
+              <span>{round.short}</span>
+              <small>{played}/{roundMatches.length}</small>
             </button>
           );
         })}
+      </nav>
+
+      <div className="kt-swipe-hint">Seitlich wischen, um den Turnierweg zu verfolgen →</div>
+      <div className="kt-scroll" ref={scrollRef} onScroll={handleTreeScroll}>
+        <div className="kt-board">
+          {rounds.map((round) => {
+            const roundMatches = MATCHES.filter(
+              (match) => match.group === round.key,
+            );
+            return (
+              <section
+                key={round.key}
+                className={`kt-round kt-round-${round.key.toLowerCase()}`}
+                ref={(node) => {
+                  roundRefs.current[round.key] = node;
+                }}
+                style={{ "--round-matches": roundMatches.length }}
+              >
+                <header>
+                  <span>{round.short}</span>
+                  <h3>{round.label}</h3>
+                  <small>{roundMatches.length} Spiele</small>
+                </header>
+                <div className="kt-match-list">
+                  {roundMatches.map((match) => (
+                    <BracketMatch
+                      key={match.id}
+                      match={match}
+                      roundKey={round.key}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </div>
-      <div className="bk-round-title">
-        {ROUNDS.find((r) => r.key === round)?.label}
+
+      <div className="kt-footer">
+        <span><i className="winner-dot" /> Sieger</span>
+        <span><i className="live-dot-small" /> Live</span>
+        <span>Quelle: OpenLigaDB</span>
       </div>
-      <div className={`bk-grid cols-${cols}`}>
-        {matches.map((m) => (
-          <BkMatch key={m.id} m={m} />
-        ))}
-      </div>
-    </div>
+    </section>
   );
 }
 
@@ -3797,7 +3917,7 @@ const SORT_OPTIONS = [
   { id: "sp", label: "Meiste Spiele" },
 ];
 
-function TabelleTab({ results, onTeamClick }) {
+function LegacyTabelleTab({ results, onTeamClick }) {
   const [view, setView] = useState("groups"); // 'groups' | 'turnier' | 'spieler' | 'bracket'
   const [sortBy, setSortBy] = useState("pts");
   const [playerStats, setPlayerStats] = useState(null);
@@ -4036,6 +4156,10 @@ function TabelleTab({ results, onTeamClick }) {
       {view === "bracket" && <KoBracket results={results} />}
     </div>
   );
+}
+
+function TabelleTab({ results, onTeamClick }) {
+  return <KoBracket results={results} onTeamClick={onTeamClick} />;
 }
 
 // ── USER STATS MODAL ──────────────────────────────────────────────────────────
