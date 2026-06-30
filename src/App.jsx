@@ -1238,26 +1238,26 @@ const MATCHES = [
   {
     id: "R16_1",
     group: "R16",
-    home: "Sieger R32_2",
-    away: "Sieger R32_1",
+    home: "Sieger R32_1",
+    away: "Sieger R32_4",
     date: "04.07.2026",
-    time: "21:00",
+    time: "19:00",
   },
   {
     id: "R16_2",
     group: "R16",
     home: "Sieger R32_3",
-    away: "Sieger R32_4",
-    date: "05.07.2026",
-    time: "03:00",
+    away: "Sieger R32_6",
+    date: "04.07.2026",
+    time: "23:00",
   },
   {
     id: "R16_3",
     group: "R16",
-    home: "Sieger R32_6",
+    home: "Sieger R32_2",
     away: "Sieger R32_5",
     date: "05.07.2026",
-    time: "21:00",
+    time: "22:00",
   },
   {
     id: "R16_4",
@@ -1270,54 +1270,46 @@ const MATCHES = [
   {
     id: "R16_5",
     group: "R16",
-    home: "Sieger R32_10",
-    away: "Sieger R32_9",
+    home: "Sieger R32_12",
+    away: "Sieger R32_11",
     date: "06.07.2026",
     time: "21:00",
   },
   {
     id: "R16_6",
     group: "R16",
-    home: "Sieger R32_11",
-    away: "Sieger R32_12",
+    home: "Sieger R32_10",
+    away: "Sieger R32_9",
     date: "07.07.2026",
     time: "03:00",
   },
   {
     id: "R16_7",
     group: "R16",
-    home: "Sieger R32_14",
-    away: "Sieger R32_13",
+    home: "Sieger R32_15",
+    away: "Sieger R32_14",
     date: "07.07.2026",
-    time: "21:00",
+    time: "18:00",
   },
   {
     id: "R16_8",
     group: "R16",
-    home: "Sieger R32_15",
+    home: "Sieger R32_13",
     away: "Sieger R32_16",
-    date: "08.07.2026",
-    time: "03:00",
+    date: "07.07.2026",
+    time: "22:00",
   },
   // Viertelfinale
   {
     id: "QF1",
     group: "QF",
-    home: "Sieger R16_1",
-    away: "Sieger R16_2",
+    home: "Sieger R16_2",
+    away: "Sieger R16_1",
     date: "09.07.2026",
-    time: "21:00",
+    time: "22:00",
   },
   {
     id: "QF2",
-    group: "QF",
-    home: "Sieger R16_3",
-    away: "Sieger R16_4",
-    date: "10.07.2026",
-    time: "03:30",
-  },
-  {
-    id: "QF3",
     group: "QF",
     home: "Sieger R16_5",
     away: "Sieger R16_6",
@@ -1325,12 +1317,20 @@ const MATCHES = [
     time: "21:00",
   },
   {
+    id: "QF3",
+    group: "QF",
+    home: "Sieger R16_3",
+    away: "Sieger R16_4",
+    date: "11.07.2026",
+    time: "23:00",
+  },
+  {
     id: "QF4",
     group: "QF",
     home: "Sieger R16_7",
     away: "Sieger R16_8",
-    date: "11.07.2026",
-    time: "02:00",
+    date: "12.07.2026",
+    time: "03:00",
   },
   // Halbfinale
   {
@@ -1356,7 +1356,7 @@ const MATCHES = [
     home: "Verlierer SF1",
     away: "Verlierer SF2",
     date: "18.07.2026",
-    time: "21:00",
+    time: "23:00",
   },
   {
     id: "FIN",
@@ -3711,6 +3711,28 @@ function PlayerStatTable({ title, icon, rows, cols }) {
 }
 
 // ── KO BRACKET ────────────────────────────────────────────────────────────────
+// Display order follows the official FIFA match path, not kickoff chronology.
+// Every adjacent pair feeds the match at the same vertical position next round.
+const BRACKET_DISPLAY_ORDER = {
+  R32: [
+    "R32_3", "R32_6", // M74/M77 -> M89
+    "R32_1", "R32_4", // M73/M75 -> M90
+    "R32_12", "R32_11", // M83/M84 -> M93
+    "R32_10", "R32_9", // M81/M82 -> M94
+    "R32_2", "R32_5", // M76/M78 -> M91
+    "R32_7", "R32_8", // M79/M80 -> M92
+    "R32_15", "R32_14", // M86/M88 -> M95
+    "R32_13", "R32_16", // M85/M87 -> M96
+  ],
+  R16: [
+    "R16_2", "R16_1", "R16_5", "R16_6",
+    "R16_3", "R16_4", "R16_7", "R16_8",
+  ],
+  QF: ["QF1", "QF2", "QF3", "QF4"],
+  SF: ["SF1", "SF2"],
+  FIN: ["FIN"],
+};
+
 function KoBracket({ results, onTeamClick }) {
   const scrollRef = useRef(null);
   const roundRefs = useRef({});
@@ -3722,6 +3744,11 @@ function KoBracket({ results, onTeamClick }) {
     { key: "SF", short: "1/2", label: "Halbfinale" },
     { key: "FIN", short: "Final", label: "Finale" },
   ];
+
+  function getRoundMatches(roundKey) {
+    const byId = new Map(MATCHES.map((match) => [match.id, match]));
+    return (BRACKET_DISPLAY_ORDER[roundKey] || []).map((id) => byId.get(id));
+  }
 
   function getDisplayMatch(match) {
     const result = results[match.id] || {};
@@ -3857,7 +3884,7 @@ function KoBracket({ results, onTeamClick }) {
     );
   }
 
-  const r32Matches = MATCHES.filter((match) => match.group === "R32");
+  const r32Matches = getRoundMatches("R32");
   const r32Played = r32Matches.filter((match) => {
     const result = results[match.id];
     return hasMatchScore(result) && result.status !== "LIVE";
@@ -3879,7 +3906,7 @@ function KoBracket({ results, onTeamClick }) {
 
       <nav className="kt-round-nav" aria-label="Turnierrunden">
         {rounds.map((round) => {
-          const roundMatches = MATCHES.filter((match) => match.group === round.key);
+          const roundMatches = getRoundMatches(round.key);
           const played = roundMatches.filter((match) => {
             const result = results[match.id];
             return hasMatchScore(result) && result.status !== "LIVE";
@@ -3902,9 +3929,7 @@ function KoBracket({ results, onTeamClick }) {
       <div className="kt-scroll" ref={scrollRef} onScroll={handleTreeScroll}>
         <div className="kt-board">
           {rounds.map((round) => {
-            const roundMatches = MATCHES.filter(
-              (match) => match.group === round.key,
-            );
+            const roundMatches = getRoundMatches(round.key);
             return (
               <section
                 key={round.key}
