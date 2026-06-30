@@ -2216,9 +2216,19 @@ function MatchCard({
           {hasResult ? (
             <>
               <div className="result-score">
-                {result.homeGoals}
+                <span className="result-score-team">
+                  {result.homeGoals}
+                  {hasPenaltyScore(result) && (
+                    <small>({result.penaltyHomeGoals})</small>
+                  )}
+                </span>
                 <span className="score-sep">:</span>
-                {result.awayGoals}
+                <span className="result-score-team">
+                  {result.awayGoals}
+                  {hasPenaltyScore(result) && (
+                    <small>({result.penaltyAwayGoals})</small>
+                  )}
+                </span>
               </div>
               {tip != null ? (
                 <div className="mc2-yourtip">
@@ -2395,11 +2405,6 @@ function MatchCard({
       {isKoGroup && hasResult && resultIsDraw && result.penaltyWinner && (
         <div className="pen-locked result">
           {result.penaltyWinner === "home" ? match.home : match.away} i.E.
-          {hasPenaltyScore(result) && (
-            <small>
-              ({result.penaltyHomeGoals}:{result.penaltyAwayGoals})
-            </small>
-          )}
         </div>
       )}
 
@@ -3755,7 +3760,14 @@ function KoBracket({ results, onTeamClick }) {
     setActiveRound(closest);
   }
 
-  function BracketTeam({ name, score, winner, loser, penaltyWinner }) {
+  function BracketTeam({
+    name,
+    score,
+    penaltyScore,
+    winner,
+    loser,
+    penaltyWinner,
+  }) {
     const code = TEAMS[name]?.code;
     const clickable = !!(code && onTeamClick);
     const content = (
@@ -3767,7 +3779,12 @@ function KoBracket({ results, onTeamClick }) {
         )}
         <span className="kt-team-name">{name}</span>
         {penaltyWinner && <span className="kt-penalty">i.E.</span>}
-        {score != null && <span className="kt-score">{score}</span>}
+        {score != null && (
+          <span className="kt-score">
+            {score}
+            {penaltyScore != null && <small>({penaltyScore})</small>}
+          </span>
+        )}
       </>
     );
     return clickable ? (
@@ -3808,14 +3825,7 @@ function KoBracket({ results, onTeamClick }) {
           {live ? (
             <span className="kt-live"><span /> LIVE</span>
           ) : done ? (
-            <span className="kt-finished">
-              Endstand
-              {hasPenaltyScore(result) && (
-                <small className="kt-penalty-score">
-                  ({result.penaltyHomeGoals}:{result.penaltyAwayGoals} i.E.)
-                </small>
-              )}
-            </span>
+            <span className="kt-finished">Endstand</span>
           ) : (
             <span>{displayMatch.date.slice(0, 5)} · {displayMatch.time}</span>
           )}
@@ -3823,6 +3833,9 @@ function KoBracket({ results, onTeamClick }) {
         <BracketTeam
           name={displayMatch.home}
           score={hasScore ? result.homeGoals : null}
+          penaltyScore={
+            hasPenaltyScore(result) ? result.penaltyHomeGoals : null
+          }
           winner={homeWon}
           loser={awayWon}
           penaltyWinner={draw && result.penaltyWinner === "home"}
@@ -3831,6 +3844,9 @@ function KoBracket({ results, onTeamClick }) {
         <BracketTeam
           name={displayMatch.away}
           score={hasScore ? result.awayGoals : null}
+          penaltyScore={
+            hasPenaltyScore(result) ? result.penaltyAwayGoals : null
+          }
           winner={awayWon}
           loser={homeWon}
           penaltyWinner={draw && result.penaltyWinner === "away"}

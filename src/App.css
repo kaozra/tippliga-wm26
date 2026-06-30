@@ -718,6 +718,18 @@ body {
   align-items: center;
   gap: 4px;
 }
+.result-score-team {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.result-score-team small {
+  color: var(--gold-light);
+  font-family: "DM Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
 .score-sep {
   color: var(--muted);
   font-size: 20px;
@@ -826,11 +838,6 @@ body {
 }
 .pen-locked.result {
   color: var(--gold);
-}
-.pen-locked.result small {
-  margin-left: 5px;
-  color: var(--text-dim);
-  font-size: 9px;
 }
 .ko-team .team-cell-name {
   color: var(--text-dim);
@@ -2548,12 +2555,6 @@ body {
 .kt-finished {
   color: var(--green);
 }
-.kt-penalty-score {
-  margin-left: 4px;
-  color: var(--gold-light);
-  font-size: 7px;
-  white-space: nowrap;
-}
 .kt-live {
   display: flex;
   align-items: center;
@@ -2628,11 +2629,21 @@ button.kt-team:hover {
 }
 .kt-score {
   min-width: 17px;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 2px;
   color: var(--gold);
   font-family: "Bebas Neue", sans-serif;
   font-size: 17px;
   line-height: 1;
   text-align: right;
+}
+.kt-score small {
+  color: var(--gold-light);
+  font-family: "DM Sans", sans-serif;
+  font-size: 7px;
+  font-weight: 800;
 }
 .kt-penalty {
   padding: 2px 4px;
