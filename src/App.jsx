@@ -1517,6 +1517,11 @@ function calcPoints(tip, result) {
 function hasMatchScore(result) {
   return result?.homeGoals != null && result?.awayGoals != null;
 }
+function hasPenaltyScore(result) {
+  return (
+    result?.penaltyHomeGoals != null && result?.penaltyAwayGoals != null
+  );
+}
 function ptsLabel(pts) {
   if (pts === 5) return <span className="pts-3">⭐ 5 Pkt</span>;
   if (pts === 3) return <span className="pts-2">✓ 3 Pkt</span>;
@@ -2390,6 +2395,11 @@ function MatchCard({
       {isKoGroup && hasResult && resultIsDraw && result.penaltyWinner && (
         <div className="pen-locked result">
           {result.penaltyWinner === "home" ? match.home : match.away} i.E.
+          {hasPenaltyScore(result) && (
+            <small>
+              ({result.penaltyHomeGoals}:{result.penaltyAwayGoals})
+            </small>
+          )}
         </div>
       )}
 
@@ -3798,7 +3808,14 @@ function KoBracket({ results, onTeamClick }) {
           {live ? (
             <span className="kt-live"><span /> LIVE</span>
           ) : done ? (
-            <span className="kt-finished">Endstand</span>
+            <span className="kt-finished">
+              Endstand
+              {hasPenaltyScore(result) && (
+                <small className="kt-penalty-score">
+                  ({result.penaltyHomeGoals}:{result.penaltyAwayGoals} i.E.)
+                </small>
+              )}
+            </span>
           ) : (
             <span>{displayMatch.date.slice(0, 5)} · {displayMatch.time}</span>
           )}

@@ -827,6 +827,11 @@ body {
 .pen-locked.result {
   color: var(--gold);
 }
+.pen-locked.result small {
+  margin-left: 5px;
+  color: var(--text-dim);
+  font-size: 9px;
+}
 .ko-team .team-cell-name {
   color: var(--text-dim);
   font-size: 12px;
@@ -2542,6 +2547,12 @@ body {
 }
 .kt-finished {
   color: var(--green);
+}
+.kt-penalty-score {
+  margin-left: 4px;
+  color: var(--gold-light);
+  font-size: 7px;
+  white-space: nowrap;
 }
 .kt-live {
   display: flex;
