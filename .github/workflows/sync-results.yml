@@ -1,6 +1,12 @@
 name: Sync WM 2026 Results
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/sync-results.mjs'
+      - 'scripts/sync-results.test.mjs'
+      - '.github/workflows/sync-results.yml'
   schedule:
     # Alle 5 Minuten in den WM-Spielfenstern (UTC). Die Datumsgrenzen verhindern,
     # dass der einmalige Turnier-Sync nach dem Finale dauerhaft weiterläuft.

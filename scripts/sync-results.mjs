@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 export const LEAGUE = "wm26";
 export const SEASON = "2026";
+export const MAX_MATCH_DURATION_MS = 4 * 60 * 60 * 1000;
 
 const TEAM_FIX = {
   "Bosnien und Herzegowina": "Bosnien-Herzegowina",
@@ -190,12 +191,25 @@ export function extractMatchState(match, swap = false, now = Date.now()) {
   const latest = latestResult(match);
   const kickoff = apiTime(match);
   const started = Number.isFinite(kickoff) && now >= kickoff;
+  const hasResultEvidence =
+    (match.goals || []).length > 0 || (match.matchResults || []).length > 0;
+  const timedOut =
+    started &&
+    hasResultEvidence &&
+    now >= kickoff + MAX_MATCH_DURATION_MS;
+  const finished = Boolean(match.matchIsFinished || timedOut);
 
   let score = null;
   if (match.matchIsFinished) {
     // The app stores the football score before penalties and the shootout
     // winner separately, matching the KO prediction UI.
     score = scoreOf(extraTime || official || latest, swap);
+  } else if (timedOut) {
+    // OpenLigaDB occasionally leaves matchIsFinished=false long after a game.
+    // The cumulative goal score is safer here than a stale period result.
+    score =
+      lastGoalScore(match, swap) ||
+      scoreOf(extraTime || official || latest, swap);
   } else if (started) {
     score = lastGoalScore(match, swap) || scoreOf(latest, swap) || {
       homeGoals: 0,
@@ -212,7 +226,7 @@ export function extractMatchState(match, swap = false, now = Date.now()) {
 
   return {
     ...(score || {}),
-    status: match.matchIsFinished ? "FT" : started ? "LIVE" : "SCHEDULED",
+    status: finished ? "FT" : started ? "LIVE" : "SCHEDULED",
     penaltyWinner,
     penaltyHomeGoals: penaltyScore?.homeGoals ?? null,
     penaltyAwayGoals: penaltyScore?.awayGoals ?? null,

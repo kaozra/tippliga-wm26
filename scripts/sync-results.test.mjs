@@ -70,6 +70,29 @@ test("uses the current goal score while a match is live", () => {
   );
 });
 
+test("closes a stale live match after four hours using its cumulative goal score", () => {
+  const match = apiMatch({
+    matchResults: [
+      { resultTypeID: 2, resultOrderID: 2, pointsTeam1: 2, pointsTeam2: 1 },
+      { resultTypeID: 4, resultOrderID: 3, pointsTeam1: 0, pointsTeam2: 1 },
+    ],
+    goals: [
+      { matchMinute: 29, scoreTeam1: 0, scoreTeam2: 1 },
+      { matchMinute: 56, scoreTeam1: 1, scoreTeam2: 1 },
+      { matchMinute: 95, scoreTeam1: 2, scoreTeam2: 1 },
+    ],
+  });
+  const state = extractMatchState(
+    match,
+    false,
+    Date.parse("2026-06-29T00:00:00Z"),
+  );
+  assert.deepEqual(
+    { homeGoals: state.homeGoals, awayGoals: state.awayGoals, status: state.status },
+    { homeGoals: 2, awayGoals: 1, status: "FT" },
+  );
+});
+
 test("stores the football score before penalties and the shootout winner separately", () => {
   const match = apiMatch({
     matchIsFinished: true,

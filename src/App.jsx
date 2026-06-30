@@ -3778,7 +3778,9 @@ function KoBracket({ results, onTeamClick }) {
   function BracketMatch({ match, roundKey }) {
     const displayMatch = getDisplayMatch(match);
     const { result } = displayMatch;
-    const done = hasMatchScore(result);
+    const hasScore = hasMatchScore(result);
+    const live = result.status === "LIVE";
+    const done = hasScore && !live;
     const draw = done && result.homeGoals === result.awayGoals;
     const homeWon =
       done &&
@@ -3788,7 +3790,6 @@ function KoBracket({ results, onTeamClick }) {
       done &&
       (result.awayGoals > result.homeGoals ||
         (draw && result.penaltyWinner === "away"));
-    const live = result.status === "LIVE";
 
     return (
       <article className={`kt-match-card${done ? " completed" : ""}${live ? " live" : ""}`}>
@@ -3804,7 +3805,7 @@ function KoBracket({ results, onTeamClick }) {
         </div>
         <BracketTeam
           name={displayMatch.home}
-          score={done ? result.homeGoals : null}
+          score={hasScore ? result.homeGoals : null}
           winner={homeWon}
           loser={awayWon}
           penaltyWinner={draw && result.penaltyWinner === "home"}
@@ -3812,7 +3813,7 @@ function KoBracket({ results, onTeamClick }) {
         <div className="kt-team-divider" />
         <BracketTeam
           name={displayMatch.away}
-          score={done ? result.awayGoals : null}
+          score={hasScore ? result.awayGoals : null}
           winner={awayWon}
           loser={homeWon}
           penaltyWinner={draw && result.penaltyWinner === "away"}
@@ -3824,9 +3825,10 @@ function KoBracket({ results, onTeamClick }) {
   }
 
   const r32Matches = MATCHES.filter((match) => match.group === "R32");
-  const r32Played = r32Matches.filter((match) =>
-    hasMatchScore(results[match.id]),
-  ).length;
+  const r32Played = r32Matches.filter((match) => {
+    const result = results[match.id];
+    return hasMatchScore(result) && result.status !== "LIVE";
+  }).length;
 
   return (
     <section className="ko-tree">
@@ -3845,9 +3847,10 @@ function KoBracket({ results, onTeamClick }) {
       <nav className="kt-round-nav" aria-label="Turnierrunden">
         {rounds.map((round) => {
           const roundMatches = MATCHES.filter((match) => match.group === round.key);
-          const played = roundMatches.filter((match) =>
-            hasMatchScore(results[match.id]),
-          ).length;
+          const played = roundMatches.filter((match) => {
+            const result = results[match.id];
+            return hasMatchScore(result) && result.status !== "LIVE";
+          }).length;
           return (
             <button
               type="button"
@@ -5156,8 +5159,18 @@ function BackgroundSyncer({ results }) {
           const officialResult = resultByType(2);
           const extraTimeResult = resultByType(4);
           const shootoutResult = resultByType(5);
-          const started =
-            Date.now() >= new Date(x.matchDateTimeUTC || x.matchDateTime).getTime();
+          const kickoffMs = new Date(
+            x.matchDateTimeUTC || x.matchDateTime,
+          ).getTime();
+          const nowMs = Date.now();
+          const started = nowMs >= kickoffMs;
+          const hasResultEvidence =
+            matchResults.length > 0 || (x.goals || []).length > 0;
+          const timedOut =
+            started &&
+            hasResultEvidence &&
+            nowMs >= kickoffMs + 4 * 60 * 60 * 1000;
+          const finished = Boolean(x.matchIsFinished || timedOut);
 
           // Fixture metadata was already handled above. Avoid one Firestore
           // write per future match from every open browser.
@@ -5176,6 +5189,13 @@ function BackgroundSyncer({ results }) {
           let scoreResult = null;
           if (x.matchIsFinished) {
             scoreResult = extraTimeResult || officialResult || latestResult;
+          } else if (timedOut) {
+            scoreResult = latestGoal
+              ? {
+                  pointsTeam1: latestGoal.scoreTeam1,
+                  pointsTeam2: latestGoal.scoreTeam2,
+                }
+              : extraTimeResult || officialResult || latestResult;
           } else if (started) {
             scoreResult = latestGoal
               ? {
@@ -5190,7 +5210,7 @@ function BackgroundSyncer({ results }) {
             matchId,
             source: "openligadb",
             sourceMatchId: x.matchID,
-            status: x.matchIsFinished ? "FT" : started ? "LIVE" : "SCHEDULED",
+            status: finished ? "FT" : started ? "LIVE" : "SCHEDULED",
           };
           if (
             scoreResult?.pointsTeam1 != null &&
