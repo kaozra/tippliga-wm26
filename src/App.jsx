@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import appCodeRaw from "./App.jsx?raw";
-import { calcPoints, hasMatchScore } from "./scoring.js";
+import { calcPoints, hasMatchScore, maxPointsForResult } from "./scoring.js";
 import { resolveBracketMatch } from "./bracket.js";
 import {
   Crosshair,
@@ -1513,6 +1513,7 @@ function getResolvedMatch(match, results, resolving = new Set()) {
   );
 }
 function ptsLabel(pts) {
+  if (pts === 6) return <span className="pts-6">⭐ 6 Pkt</span>;
   if (pts === 5) return <span className="pts-5">⭐ 5 Pkt</span>;
   if (pts === 4) return <span className="pts-4">◆ 4 Pkt</span>;
   if (pts === 3) return <span className="pts-3">✓ 3 Pkt</span>;
@@ -3710,12 +3711,17 @@ function TippenTab({ uid, results, onTeamClick: onMatchClick }) {
         }}
       >
         <span className="pts-legend-item">
+          <span className="pts-6">⭐ 6</span> Exaktes Resultat + richtiger
+          Elfmetersieger
+        </span>
+        <span className="pts-legend-sep">·</span>
+        <span className="pts-legend-item">
           <span className="pts-5">⭐ 5</span> Exaktes Resultat
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
-          <span className="pts-4">◆ 4</span> Exakt inkl. Elfmeterschiessen,
-          falscher Sieger / Remis nicht exakt, Sieger richtig
+          <span className="pts-4">◆ 4</span> Exaktes Resultat + falscher
+          Elfmetersieger
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
@@ -3723,11 +3729,15 @@ function TippenTab({ uid, results, onTeamClick: onMatchClick }) {
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
-          <span className="pts-2">+ 2</span> Sieger + eine Torzahl exakt getippt
+          <span className="pts-2">+ 2</span> Richtiger Sieger + eine Torzahl exakt
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
-          <span className="pts-1">~ 1</span> Nur Sieger
+          <span className="pts-1">~ 1</span> Richtiger Sieger
+        </span>
+        <span className="pts-legend-sep">·</span>
+        <span className="pts-legend-item">
+          <span className="pts-0">✗ 0</span> Falscher Spielausgang
         </span>
       </div>
     </div>
@@ -4421,9 +4431,12 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
     (s, t) => s + (calcPoints(t, results[t.matchId]) || 0),
     0,
   );
-  const maxPts = tippedPlayed.length * 5;
+  const maxPts = tippedPlayed.reduce(
+    (sum, tip) => sum + maxPointsForResult(results[tip.matchId]),
+    0,
+  );
   const exact = tippedPlayed.filter(
-    (t) => calcPoints(t, results[t.matchId]) === 5,
+    (t) => (calcPoints(t, results[t.matchId]) || 0) >= 5,
   ).length;
   const scored = tippedPlayed.filter(
     (t) => (calcPoints(t, results[t.matchId]) || 0) > 0,
@@ -4488,7 +4501,7 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
           </div>
           <div className="my-stat">
             <div className="my-stat-val">{exact}</div>
-            <div className="my-stat-lbl">Exakt (5P)</div>
+            <div className="my-stat-lbl">Exakt (5/6P)</div>
           </div>
           <div className="my-stat">
             <div className="my-stat-val">
@@ -4507,22 +4520,23 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
           </div>
         </div>
 
-        <div className="th-title">
-          <span>
-            Tipp-Verlauf <span className="th-sub">· nur gespielte Spiele</span>
-          </span>
-          <details className="th-legend-dropdown">
-            <summary>Wertung</summary>
-            <div className="th-legend-menu">
-              <div><span className="pts-5">⭐ 5</span><span>Exakt, inkl. Elfmetersieger</span></div>
-              <div><span className="pts-4">◆ 4</span><span>Exakt inkl. Elfmeterschiessen, falscher Sieger / Remis nicht exakt, Sieger richtig</span></div>
-              <div><span className="pts-3">✓ 3</span><span>Exakte Tordifferenz</span></div>
-              <div><span className="pts-2">+ 2</span><span>Sieger + eine Torzahl exakt getippt</span></div>
-              <div><span className="pts-1">~ 1</span><span>Nur Sieger</span></div>
-              <div><span className="pts-0">✗ 0</span><span>Falscher Spielausgang</span></div>
-            </div>
-          </details>
-        </div>
+        <details className="th-legend-dropdown">
+          <summary className="th-title">
+            <span>
+              Tipp-Verlauf <span className="th-sub">· nur gespielte Spiele</span>
+            </span>
+            <span className="th-legend-toggle">Legende</span>
+          </summary>
+          <div className="th-legend-menu">
+            <div><span className="pts-6">⭐ 6</span><span>Exaktes Resultat + richtiger Elfmetersieger</span></div>
+            <div><span className="pts-5">⭐ 5</span><span>Exaktes Resultat</span></div>
+            <div><span className="pts-4">◆ 4</span><span>Exaktes Resultat + falscher Elfmetersieger</span></div>
+            <div><span className="pts-3">✓ 3</span><span>Exakte Tordifferenz</span></div>
+            <div><span className="pts-2">+ 2</span><span>Richtiger Sieger + eine Torzahl exakt</span></div>
+            <div><span className="pts-1">~ 1</span><span>Richtiger Sieger</span></div>
+            <div><span className="pts-0">✗ 0</span><span>Falscher Spielausgang</span></div>
+          </div>
+        </details>
         {playedMatches.length === 0 && (
           <div className="th-empty">Noch keine Spiele beendet.</div>
         )}
@@ -4577,8 +4591,10 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
                         )}
                       </span>
                       <span className={`th-pts th-pts-${p}`}>
-                        {p === 5
-                          ? "⭐5"
+                        {p === 6
+                          ? "⭐6"
+                          : p === 5
+                            ? "⭐5"
                           : p === 4
                             ? "◆4"
                           : p === 3
@@ -4814,7 +4830,7 @@ function RanglisteTab({ uid, results }) {
         return r && r.homeGoals != null;
       });
       const exact = played.filter(
-        (t) => calcPoints(t, results[t.matchId]) === 5,
+        (t) => (calcPoints(t, results[t.matchId]) || 0) >= 5,
       ).length;
       const zeros = played.filter(
         (t) => (calcPoints(t, results[t.matchId]) || 0) === 0,
@@ -5073,9 +5089,12 @@ function ProfilTab({ user, profile, results, onProfileUpdate }) {
     (s, t) => s + (calcPoints(t, results[t.matchId]) || 0),
     0,
   );
-  const maxPts = tippedPlayed.length * 5;
+  const maxPts = tippedPlayed.reduce(
+    (sum, tip) => sum + maxPointsForResult(results[tip.matchId]),
+    0,
+  );
   const exact = tippedPlayed.filter(
-    (t) => calcPoints(t, results[t.matchId]) === 5,
+    (t) => (calcPoints(t, results[t.matchId]) || 0) >= 5,
   ).length;
   const scored = tippedPlayed.filter(
     (t) => (calcPoints(t, results[t.matchId]) || 0) > 0,
@@ -5172,7 +5191,7 @@ function ProfilTab({ user, profile, results, onProfileUpdate }) {
             </div>
             <div className="my-stat">
               <div className="my-stat-val">{exact}</div>
-              <div className="my-stat-lbl">Exakt (5P)</div>
+              <div className="my-stat-lbl">Exakt (5/6P)</div>
             </div>
             <div className="my-stat">
               <div className="my-stat-val">

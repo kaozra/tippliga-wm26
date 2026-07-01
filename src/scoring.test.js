@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calcPoints } from "./scoring.js";
+import { calcPoints, maxPointsForResult } from "./scoring.js";
 
-test("awards five points for an exact score and correct shootout winner", () => {
+test("awards six points for an exact score and correct shootout winner", () => {
   assert.equal(
     calcPoints(
       { homeGoals: 1, awayGoals: 1, penaltyWinner: "away" },
       { homeGoals: 1, awayGoals: 1, penaltyWinner: "away" },
     ),
-    5,
+    6,
   );
 });
 
@@ -62,7 +62,7 @@ test("awards zero points for the wrong outcome", () => {
   );
 });
 
-test("adds one point for the correct shootout winner on a non-exact draw", () => {
+test("awards three points for a non-exact draw", () => {
   const result = {
     homeGoals: 1,
     awayGoals: 1,
@@ -73,7 +73,7 @@ test("adds one point for the correct shootout winner on a non-exact draw", () =>
       { homeGoals: 2, awayGoals: 2, penaltyWinner: "away" },
       result,
     ),
-    4,
+    3,
   );
   assert.equal(
     calcPoints(
@@ -82,4 +82,9 @@ test("adds one point for the correct shootout winner on a non-exact draw", () =>
     ),
     3,
   );
+});
+
+test("uses six as the maximum only for matches decided by shootout", () => {
+  assert.equal(maxPointsForResult({ penaltyWinner: "home" }), 6);
+  assert.equal(maxPointsForResult({ homeGoals: 2, awayGoals: 1 }), 5);
 });

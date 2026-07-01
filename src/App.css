@@ -779,8 +779,12 @@ body {
   font-size: 11px;
   text-align: center;
 }
-.pts-5 {
+.pts-6 {
   color: var(--gold);
+  font-weight: 700;
+}
+.pts-5 {
+  color: var(--gold-light);
   font-weight: 700;
 }
 .pts-4 {
@@ -1852,17 +1856,9 @@ body {
   padding: 8px 10px;
 }
 .th-legend-dropdown {
-  position: relative;
-  flex: 0 0 auto;
+  width: 100%;
 }
-.th-legend-dropdown summary {
-  padding: 4px 8px;
-  border: 1px solid var(--dark-4);
-  border-radius: 6px;
-  color: var(--text-dim);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
+.th-legend-dropdown summary.th-title {
   list-style: none;
   cursor: pointer;
   user-select: none;
@@ -1870,29 +1866,34 @@ body {
 .th-legend-dropdown summary::-webkit-details-marker {
   display: none;
 }
-.th-legend-dropdown summary::after {
+.th-legend-toggle {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--dark-4);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+.th-legend-toggle::after {
   content: " ▾";
   color: var(--muted);
 }
-.th-legend-dropdown[open] summary {
+.th-legend-dropdown[open] .th-legend-toggle {
   border-color: var(--gold);
   color: var(--gold);
 }
-.th-legend-dropdown[open] summary::after {
+.th-legend-dropdown[open] .th-legend-toggle::after {
   content: " ▴";
 }
 .th-legend-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 20;
-  width: 460px;
-  max-width: calc(100vw - 32px);
+  width: 100%;
+  margin: -4px 0 10px;
   padding: 8px;
   border: 1px solid var(--dark-4);
   border-radius: 8px;
   background: var(--dark-2);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
 }
 .th-legend-menu > div {
   display: grid;
@@ -1903,18 +1904,9 @@ body {
   color: var(--text-dim);
   font-size: 10px;
   font-weight: 500;
-  white-space: nowrap;
 }
 .th-legend-menu > div + div {
   border-top: 1px solid var(--dark-4);
-}
-@media (max-width: 600px) {
-  .th-legend-menu {
-    width: calc(100vw - 32px);
-  }
-  .th-legend-menu > div {
-    white-space: normal;
-  }
 }
 .th-teams {
   display: grid;
@@ -1997,8 +1989,11 @@ body {
   min-width: 26px;
   text-align: right;
 }
-.th-pts-5 {
+.th-pts-6 {
   color: var(--gold);
+}
+.th-pts-5 {
+  color: var(--gold-light);
 }
 .th-pts-4 {
   color: var(--gold-light);

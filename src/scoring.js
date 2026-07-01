@@ -13,7 +13,7 @@ export function calcPoints(tip, result) {
   const exact = tipHome === resultHome && tipAway === resultAway;
   if (exact) {
     if (!result.penaltyWinner) return 5;
-    return tip.penaltyWinner === result.penaltyWinner ? 5 : 4;
+    return tip.penaltyWinner === result.penaltyWinner ? 6 : 4;
   }
 
   const tipDifference = tipHome - tipAway;
@@ -22,10 +22,10 @@ export function calcPoints(tip, result) {
     Math.sign(tipDifference) === Math.sign(resultDifference);
   if (!correctOutcome) return 0;
 
-  // A non-exact draw already has the correct goal difference. Selecting the
-  // correct shootout winner raises it by one tier.
+  // A non-exact draw is scored as an exact goal difference. The extra
+  // shootout point is reserved for an otherwise exact prediction.
   if (result.penaltyWinner) {
-    return tip.penaltyWinner === result.penaltyWinner ? 4 : 3;
+    return 3;
   }
 
   const correctDifference = tipDifference === resultDifference;
@@ -35,4 +35,8 @@ export function calcPoints(tip, result) {
   if (oneScoreExact) return 2;
 
   return 1;
+}
+
+export function maxPointsForResult(result) {
+  return result?.penaltyWinner ? 6 : 5;
 }
