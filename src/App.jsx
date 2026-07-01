@@ -3722,7 +3722,7 @@ function TippenTab({ uid, results, onTeamClick: onMatchClick }) {
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
-          <span className="pts-2">+ 2</span> Sieger + eine Torzahl
+          <span className="pts-2">+ 2</span> Sieger + eine Torzahl exakt getippt
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
@@ -4516,7 +4516,7 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
               <div><span className="pts-5">⭐ 5</span><span>Exakt, inkl. Elfmetersieger</span></div>
               <div><span className="pts-4">◆ 4</span><span>Exakt, Elfmeter falsch / Remis, Elfmeter richtig</span></div>
               <div><span className="pts-3">✓ 3</span><span>Exakte Tordifferenz</span></div>
-              <div><span className="pts-2">+ 2</span><span>Sieger + eine Torzahl</span></div>
+              <div><span className="pts-2">+ 2</span><span>Sieger + eine Torzahl exakt getippt</span></div>
               <div><span className="pts-1">~ 1</span><span>Nur Sieger</span></div>
               <div><span className="pts-0">✗ 0</span><span>Falscher Spielausgang</span></div>
             </div>
