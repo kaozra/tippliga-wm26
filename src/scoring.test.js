@@ -12,13 +12,13 @@ test("awards five points for an exact score and correct shootout winner", () => 
   );
 });
 
-test("awards three points for an exact score but wrong shootout winner", () => {
+test("awards four points for an exact score but wrong shootout winner", () => {
   assert.equal(
     calcPoints(
       { homeGoals: 1, awayGoals: 1, penaltyWinner: "home" },
       { homeGoals: 1, awayGoals: 1, penaltyWinner: "away" },
     ),
-    3,
+    4,
   );
 });
 
@@ -32,13 +32,13 @@ test("awards three points for the correct goal difference", () => {
   );
 });
 
-test("awards one point when only the winner and one score are correct", () => {
+test("awards three points when the winner and one score are correct", () => {
   assert.equal(
     calcPoints(
       { homeGoals: 3, awayGoals: 2 },
       { homeGoals: 3, awayGoals: 0 },
     ),
-    1,
+    3,
   );
 });
 

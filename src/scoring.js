@@ -13,7 +13,7 @@ export function calcPoints(tip, result) {
   const exact = tipHome === resultHome && tipAway === resultAway;
   if (exact) {
     if (!result.penaltyWinner) return 5;
-    return tip.penaltyWinner === result.penaltyWinner ? 5 : 3;
+    return tip.penaltyWinner === result.penaltyWinner ? 5 : 4;
   }
 
   const tipDifference = tipHome - tipAway;
@@ -29,7 +29,9 @@ export function calcPoints(tip, result) {
   }
 
   const correctDifference = tipDifference === resultDifference;
-  if (correctDifference) return 3;
+  const oneScoreExact =
+    tipHome === resultHome || tipAway === resultAway;
+  if (correctDifference || oneScoreExact) return 3;
 
   return 1;
 }
