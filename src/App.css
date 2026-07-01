@@ -779,7 +779,7 @@ body {
   font-size: 11px;
   text-align: center;
 }
-.pts-3 {
+.pts-5 {
   color: var(--gold);
   font-weight: 700;
 }
@@ -787,8 +787,12 @@ body {
   color: var(--gold-light);
   font-weight: 700;
 }
-.pts-2 {
+.pts-3 {
   color: var(--green);
+}
+.pts-2 {
+  color: #60a5fa;
+  font-weight: 700;
 }
 .pts-1 {
   color: var(--text-dim);
@@ -1932,6 +1936,9 @@ body {
 }
 .th-pts-3 {
   color: var(--green);
+}
+.th-pts-2 {
+  color: #60a5fa;
 }
 .th-pts-1 {
   color: var(--text-dim);

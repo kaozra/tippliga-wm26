@@ -22,16 +22,17 @@ export function calcPoints(tip, result) {
     Math.sign(tipDifference) === Math.sign(resultDifference);
   if (!correctOutcome) return 0;
 
-  // For a non-exact shootout prediction, the selected shootout winner
-  // differentiates a strong prediction from merely predicting the draw.
+  // A non-exact draw already has the correct goal difference. Selecting the
+  // correct shootout winner raises it by one tier.
   if (result.penaltyWinner) {
-    return tip.penaltyWinner === result.penaltyWinner ? 3 : 1;
+    return tip.penaltyWinner === result.penaltyWinner ? 4 : 3;
   }
 
   const correctDifference = tipDifference === resultDifference;
   const oneScoreExact =
     tipHome === resultHome || tipAway === resultAway;
-  if (correctDifference || oneScoreExact) return 3;
+  if (correctDifference) return 3;
+  if (oneScoreExact) return 2;
 
   return 1;
 }

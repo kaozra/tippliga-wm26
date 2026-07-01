@@ -32,13 +32,13 @@ test("awards three points for the correct goal difference", () => {
   );
 });
 
-test("awards three points when the winner and one score are correct", () => {
+test("awards two points when the winner and one score are correct", () => {
   assert.equal(
     calcPoints(
       { homeGoals: 3, awayGoals: 2 },
       { homeGoals: 3, awayGoals: 0 },
     ),
-    3,
+    2,
   );
 });
 
@@ -62,7 +62,7 @@ test("awards zero points for the wrong outcome", () => {
   );
 });
 
-test("uses the shootout winner only for non-exact draw predictions", () => {
+test("adds one point for the correct shootout winner on a non-exact draw", () => {
   const result = {
     homeGoals: 1,
     awayGoals: 1,
@@ -73,13 +73,13 @@ test("uses the shootout winner only for non-exact draw predictions", () => {
       { homeGoals: 2, awayGoals: 2, penaltyWinner: "away" },
       result,
     ),
-    3,
+    4,
   );
   assert.equal(
     calcPoints(
       { homeGoals: 2, awayGoals: 2, penaltyWinner: "home" },
       result,
     ),
-    1,
+    3,
   );
 });

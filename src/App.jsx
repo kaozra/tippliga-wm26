@@ -1513,9 +1513,10 @@ function getResolvedMatch(match, results, resolving = new Set()) {
   );
 }
 function ptsLabel(pts) {
-  if (pts === 5) return <span className="pts-3">⭐ 5 Pkt</span>;
+  if (pts === 5) return <span className="pts-5">⭐ 5 Pkt</span>;
   if (pts === 4) return <span className="pts-4">◆ 4 Pkt</span>;
-  if (pts === 3) return <span className="pts-2">✓ 3 Pkt</span>;
+  if (pts === 3) return <span className="pts-3">✓ 3 Pkt</span>;
+  if (pts === 2) return <span className="pts-2">+ 2 Pkt</span>;
   if (pts === 1) return <span className="pts-1">~ 1 Pkt</span>;
   if (pts === 0) return <span className="pts-0">✗ 0 Pkt</span>;
   return null;
@@ -3709,15 +3710,19 @@ function TippenTab({ uid, results, onTeamClick: onMatchClick }) {
         }}
       >
         <span className="pts-legend-item">
-          <span className="pts-3">⭐ 5</span> Exaktes Resultat
+          <span className="pts-5">⭐ 5</span> Exaktes Resultat
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
-          <span className="pts-4">◆ 4</span> Exakt, Elfmeter falsch
+          <span className="pts-4">◆ 4</span> Elfmeter-Bonus
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
-          <span className="pts-2">✓ 3</span> Richtige Tendenz
+          <span className="pts-3">✓ 3</span> Exakte Tordifferenz
+        </span>
+        <span className="pts-legend-sep">·</span>
+        <span className="pts-legend-item">
+          <span className="pts-2">+ 2</span> Sieger + eine Torzahl
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
@@ -4564,6 +4569,8 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
                             ? "◆4"
                           : p === 3
                             ? "✓3"
+                            : p === 2
+                              ? "+2"
                             : p === 1
                               ? "~1"
                               : "✗0"}
