@@ -48,6 +48,8 @@ import {
   getDoc,
   getDocs,
   collection,
+  query,
+  where,
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
@@ -2392,6 +2394,7 @@ function MatchCard({
       {locked && (
         <MatchTipsPanel
           matchId={match.id}
+          match={match}
           allTips={allTips}
           allUsers={allUsers}
           result={hasResult ? result : null}
@@ -2787,7 +2790,44 @@ function SpielplanTab({ results, onTeamClick }) {
 }
 
 // ── MATCH TIPS PANEL ─────────────────────────────────────────────────────────
-function MatchTipsPanel({ matchId, allTips, allUsers, result }) {
+function TipRows({ matchTips, allUsers, result, match }) {
+  return matchTips.map((tip) => {
+    const user = allUsers.find((entry) => entry.uid === tip.uid);
+    const points = result?.status === "LIVE" ? null : calcPoints(tip, result);
+    const isKnockoutDraw =
+      KO_GROUPS.includes(match.group) && tip.homeGoals === tip.awayGoals;
+    const shootoutTeam = tip.penaltyWinner
+      ? tip.penaltyWinner === "home"
+        ? match.home
+        : match.away
+      : null;
+    return (
+      <div key={tip.uid} className="tips-row">
+        <InitialsAvatar
+          name={user?.displayName || "?"}
+          uid={tip.uid}
+          size={20}
+        />
+        <span className="tips-name">{user?.displayName || "?"}</span>
+        <span className="tips-pick">
+          <strong className="tips-score">
+            {tip.homeGoals}:{tip.awayGoals}
+          </strong>
+          {shootoutTeam ? (
+            <small>{shootoutTeam} i.E.</small>
+          ) : isKnockoutDraw ? (
+            <small className="missing">kein Elfmetersieger</small>
+          ) : null}
+        </span>
+        {points != null && (
+          <span className={`tips-pts pts-${points}`}>{points}P</span>
+        )}
+      </div>
+    );
+  });
+}
+
+function MatchTipsPanel({ matchId, match, allTips, allUsers, result }) {
   const [open, setOpen] = useState(false);
   const matchTips = allTips.filter((t) => t.matchId === matchId);
   if (matchTips.length === 0) return null;
@@ -2799,26 +2839,12 @@ function MatchTipsPanel({ matchId, allTips, allUsers, result }) {
       </button>
       {open && (
         <div className="tips-list">
-          {matchTips.map((t) => {
-            const u = allUsers.find((u) => u.uid === t.uid);
-            const pts = result ? calcPoints(t, result) : null;
-            return (
-              <div key={t.uid} className="tips-row">
-                <InitialsAvatar
-                  name={u?.displayName || "?"}
-                  uid={t.uid}
-                  size={20}
-                />
-                <span className="tips-name">{u?.displayName || "?"}</span>
-                <span className="tips-score">
-                  {t.homeGoals}:{t.awayGoals}
-                </span>
-                {pts != null && (
-                  <span className={`tips-pts pts-${pts}`}>{pts}P</span>
-                )}
-              </div>
-            );
-          })}
+          <TipRows
+            matchTips={matchTips}
+            allUsers={allUsers}
+            result={result}
+            match={match}
+          />
         </div>
       )}
     </div>
@@ -3714,7 +3740,7 @@ const BRACKET_DISPLAY_ORDER = {
   FIN: ["FIN"],
 };
 
-function KoBracket({ results, onTeamClick }) {
+function KoBracket({ results, onTeamClick, onShowTips }) {
   const scrollRef = useRef(null);
   const roundRefs = useRef({});
   const [activeRound, setActiveRound] = useState("R32");
@@ -3825,11 +3851,14 @@ function KoBracket({ results, onTeamClick }) {
       done &&
       (result.awayGoals > result.homeGoals ||
         (draw && result.penaltyWinner === "away"));
+    const tipsUnlocked =
+      done || Date.now() >= parseMatchDate(displayMatch).getTime();
 
     return (
       <article className={`kt-match-card${done ? " completed" : ""}${live ? " live" : ""}`}>
         <div className="kt-match-meta">
           <span>{match.id.replace("_", " ")}</span>
+          <span className="kt-meta-actions">
           {live ? (
             <span className="kt-live"><span /> LIVE</span>
           ) : done ? (
@@ -3837,6 +3866,16 @@ function KoBracket({ results, onTeamClick }) {
           ) : (
             <span>{displayMatch.date.slice(0, 5)} · {displayMatch.time}</span>
           )}
+            {tipsUnlocked && onShowTips && (
+              <button
+                type="button"
+                className="kt-tips-trigger"
+                onClick={() => onShowTips(displayMatch)}
+              >
+                Tipps
+              </button>
+            )}
+          </span>
         </div>
         <BracketTeam
           name={displayMatch.home}
@@ -4200,8 +4239,110 @@ function LegacyTabelleTab({ results, onTeamClick }) {
   );
 }
 
+function BracketTipsModal({ state, onClose }) {
+  if (!state) return null;
+  const { match, tips, users, loading, error } = state;
+  return (
+    <div className="modal-overlay bracket-tips-overlay" onClick={onClose}>
+      <div
+        className="bracket-tips-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="modal-close" onClick={onClose}>✕</button>
+        <span className="bracket-tips-kicker">Abgegebene Tipps</span>
+        <h3>{match.home} – {match.away}</h3>
+        <p>Resultat und gewählter Elfmetersieger werden unverändert angezeigt.</p>
+        {loading ? (
+          <div className="bracket-tips-state">Tipps werden geladen…</div>
+        ) : error ? (
+          <div className="bracket-tips-state error">{error}</div>
+        ) : tips.length === 0 ? (
+          <div className="bracket-tips-state">
+            Für dieses Spiel wurde kein Tipp abgegeben.
+          </div>
+        ) : (
+          <div className="tips-list bracket-tips-list">
+            <TipRows
+              matchTips={tips}
+              allUsers={users}
+              result={state.result}
+              match={match}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TabelleTab({ results, onTeamClick }) {
-  return <KoBracket results={results} onTeamClick={onTeamClick} />;
+  const [tipsModal, setTipsModal] = useState(null);
+  const tipsRequestRef = useRef(0);
+
+  async function showTips(match) {
+    const requestId = ++tipsRequestRef.current;
+    setTipsModal({
+      match,
+      result: results[match.id] || null,
+      tips: [],
+      users: [],
+      loading: true,
+      error: "",
+    });
+    try {
+      const tipsSnapshot = await getDocs(
+        query(collection(db, "tips"), where("matchId", "==", match.id)),
+      );
+      const tips = tipsSnapshot.docs.map((document) => document.data());
+      const userIds = [...new Set(tips.map((tip) => tip.uid))];
+      const userDocuments = await Promise.all(
+        userIds.map((uid) => getDoc(doc(db, "users", uid))),
+      );
+      const users = userDocuments.map((document, index) => ({
+        uid: userIds[index],
+        ...(document.exists() ? document.data() : {}),
+      }));
+      if (tipsRequestRef.current !== requestId) return;
+      tips.sort((left, right) => {
+        const leftName =
+          users.find((user) => user.uid === left.uid)?.displayName || "";
+        const rightName =
+          users.find((user) => user.uid === right.uid)?.displayName || "";
+        return leftName.localeCompare(rightName, "de");
+      });
+      setTipsModal({
+        match,
+        result: results[match.id] || null,
+        tips,
+        users,
+        loading: false,
+        error: "",
+      });
+    } catch {
+      if (tipsRequestRef.current !== requestId) return;
+      setTipsModal((current) => ({
+        ...current,
+        loading: false,
+        error: "Tipps konnten nicht geladen werden.",
+      }));
+    }
+  }
+
+  function closeTips() {
+    tipsRequestRef.current += 1;
+    setTipsModal(null);
+  }
+
+  return (
+    <>
+      <KoBracket
+        results={results}
+        onTeamClick={onTeamClick}
+        onShowTips={showTips}
+      />
+      <BracketTipsModal state={tipsModal} onClose={closeTips} />
+    </>
+  );
 }
 
 // ── USER STATS MODAL ──────────────────────────────────────────────────────────
