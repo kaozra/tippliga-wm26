@@ -3687,7 +3687,7 @@ function TippenTab({ uid, results, onTeamClick: onMatchClick }) {
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
-          <span className="pts-2">✓ 3</span> Tordifferenz / ein Torwert
+          <span className="pts-2">✓ 3</span> Richtige Tordifferenz
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">

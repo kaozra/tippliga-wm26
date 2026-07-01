@@ -32,13 +32,13 @@ test("awards three points for the correct goal difference", () => {
   );
 });
 
-test("keeps three points when one score and the outcome are correct", () => {
+test("awards one point when only the winner and one score are correct", () => {
   assert.equal(
     calcPoints(
-      { homeGoals: 0, awayGoals: 2 },
-      { homeGoals: 1, awayGoals: 2 },
+      { homeGoals: 3, awayGoals: 2 },
+      { homeGoals: 3, awayGoals: 0 },
     ),
-    3,
+    1,
   );
 });
 

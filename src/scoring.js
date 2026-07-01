@@ -29,9 +29,7 @@ export function calcPoints(tip, result) {
   }
 
   const correctDifference = tipDifference === resultDifference;
-  const oneScoreExact =
-    tipHome === resultHome || tipAway === resultAway;
-  if (correctDifference || oneScoreExact) return 3;
+  if (correctDifference) return 3;
 
   return 1;
 }

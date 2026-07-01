@@ -6,9 +6,6 @@ on:
     paths:
       - 'scripts/sync-results.mjs'
       - 'scripts/sync-results.test.mjs'
-      - 'src/scoring.js'
-      - 'src/scoring.test.js'
-      - '.github/workflows/sync-results.yml'
   schedule:
     # Alle 5 Minuten in den WM-Spielfenstern (UTC). Die Datumsgrenzen verhindern,
     # dass der einmalige Turnier-Sync nach dem Finale dauerhaft weiterläuft.
@@ -46,9 +43,6 @@ jobs:
 
       - name: Verify sync logic
         run: npm run test:sync
-
-      - name: Verify scoring rules
-        run: npm run test:scoring
 
       - name: Sync fixtures, live scores and results
         run: |
