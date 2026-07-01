@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import appCodeRaw from "./App.jsx?raw";
+import { calcPoints, hasMatchScore } from "./scoring.js";
 import {
   Crosshair,
   Star,
@@ -1494,29 +1495,6 @@ function calcSonderPoints(sonderTip, sonderResults) {
   return p1 + p2;
 }
 
-function calcPoints(tip, result) {
-  if (!hasMatchScore(result)) return null;
-  const th = tip.homeGoals,
-    ta = tip.awayGoals,
-    rh = result.homeGoals,
-    ra = result.awayGoals;
-  const exact = th === rh && ta === ra;
-  const tt = Math.sign(th - ta),
-    rt = Math.sign(rh - ra);
-  const correctTendency = tt === rt;
-  if (result.penaltyWinner) {
-    if (!correctTendency) return 0;
-    const correctPen = tip.penaltyWinner === result.penaltyWinner;
-    if (exact) return correctPen ? 5 : 3;
-    return correctPen ? 3 : 1;
-  }
-  if (exact) return 5;
-  if (correctTendency) return th === rh || ta === ra ? 3 : 1;
-  return 0;
-}
-function hasMatchScore(result) {
-  return result?.homeGoals != null && result?.awayGoals != null;
-}
 function hasPenaltyScore(result) {
   return (
     result?.penaltyHomeGoals != null && result?.penaltyAwayGoals != null
@@ -2061,8 +2039,9 @@ function MatchCard({
     setPenWinner(tip?.penaltyWinner || null);
   }, [tip]);
   function handleBlur() {
-    if (h !== "" && a !== "")
-      onSave(match.id, h, a, isKoGroup && +h === +a ? penWinner : null);
+    if (h === "" || a === "") return;
+    if (isKoGroup && +h === +a && !penWinner) return;
+    onSave(match.id, h, a, isKoGroup && +h === +a ? penWinner : null);
   }
   function handlePen(pw) {
     setPenWinner(pw);
@@ -2382,7 +2361,9 @@ function MatchCard({
 
       {isKoGroup && tipIsDraw && !locked && !hasResult && (
         <div className="pen-row">
-          <span className="pen-label">Elfmeter</span>
+          <span className="pen-label">
+            Elfmetersieger auswählen <em>Pflicht</em>
+          </span>
           <button
             className={`pen-btn${penWinner === "home" ? " active" : ""}`}
             onClick={() => handlePen("home")}
@@ -3648,7 +3629,7 @@ function TippenTab({ uid, results, onTeamClick: onMatchClick }) {
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
-          <span className="pts-2">✓ 3</span> Richtige Tendenz
+          <span className="pts-2">✓ 3</span> Tordifferenz / ein Torwert
         </span>
         <span className="pts-legend-sep">·</span>
         <span className="pts-legend-item">
@@ -4350,8 +4331,15 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
                 <div className="th-tip">
                   {t ? (
                     <>
-                      <span className="th-tipval">
-                        {t.homeGoals}:{t.awayGoals}
+                      <span className="th-tip-detail">
+                        <span className="th-tipval">
+                          {t.homeGoals}:{t.awayGoals}
+                        </span>
+                        {t.penaltyWinner && (
+                          <small className="th-tip-penalty">
+                            {t.penaltyWinner === "home" ? m.home : m.away} i.E.
+                          </small>
+                        )}
                       </span>
                       <span className={`th-pts th-pts-${p}`}>
                         {p === 5

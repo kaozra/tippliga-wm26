@@ -10,6 +10,7 @@
     "sync:playerstats": "npm --prefix scripts run sync:playerstats",
     "sync:results": "npm --prefix scripts run sync:results",
     "test:sync": "npm --prefix scripts test",
+    "test:scoring": "node --test src/scoring.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
