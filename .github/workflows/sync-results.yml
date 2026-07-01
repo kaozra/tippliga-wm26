@@ -51,6 +51,13 @@ jobs:
         run: npm run test:scoring
 
       - name: Sync fixtures, live scores and results
-        run: npm run sync:results
+        run: |
+          for attempt in 1 2 3; do
+            npm run sync:results && exit 0
+            if [ "$attempt" -lt 3 ]; then
+              sleep $((attempt * 20))
+            fi
+          done
+          exit 1
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
