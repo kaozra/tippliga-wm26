@@ -4452,21 +4452,35 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
             const r = results[m.id];
             const t = myTips.find((x) => x.matchId === m.id);
             const p = t ? calcPoints(t, r) : null;
-            const hc = TEAMS[m.home]?.code,
-              ac = TEAMS[m.away]?.code;
+            const homeName = r.koHome || m.home;
+            const awayName = r.koAway || m.away;
+            const hc = TEAMS[homeName]?.code,
+              ac = TEAMS[awayName]?.code;
+            const resultPenaltyTeam = r.penaltyWinner
+              ? r.penaltyWinner === "home"
+                ? homeName
+                : awayName
+              : null;
             return (
               <div key={m.id} className="th-row">
                 <div className="th-teams">
                   <span className="th-team th-home">
-                    <span className="th-tn">{m.home}</span>
+                    <span className="th-tn">{homeName}</span>
                     {hc && <img src={flagUrl(hc)} className="th-flag" alt="" />}
                   </span>
-                  <span className="th-res">
-                    {r.homeGoals}:{r.awayGoals}
+                  <span className="th-result-detail">
+                    <span className="th-res">
+                      {r.homeGoals}:{r.awayGoals}
+                    </span>
+                    {resultPenaltyTeam && (
+                      <small className="th-result-penalty">
+                        {resultPenaltyTeam} i.E.
+                      </small>
+                    )}
                   </span>
                   <span className="th-team th-away">
                     {ac && <img src={flagUrl(ac)} className="th-flag" alt="" />}
-                    <span className="th-tn">{m.away}</span>
+                    <span className="th-tn">{awayName}</span>
                   </span>
                 </div>
                 <div className="th-tip">
@@ -4478,7 +4492,7 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
                         </span>
                         {t.penaltyWinner && (
                           <small className="th-tip-penalty">
-                            {t.penaltyWinner === "home" ? m.home : m.away} i.E.
+                            {t.penaltyWinner === "home" ? homeName : awayName} i.E.
                           </small>
                         )}
                       </span>

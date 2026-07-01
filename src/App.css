@@ -2471,6 +2471,28 @@ body {
   font-size: 9px;
   text-align: center;
 }
+.th-result-detail {
+  display: flex;
+  min-width: 58px;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+}
+.th-result-penalty,
+.th-tip-penalty {
+  padding: 1px 4px;
+  background: rgba(212, 175, 55, 0.08);
+  border-radius: 4px;
+}
+.th-result-penalty {
+  max-width: 82px;
+  overflow: hidden;
+  color: var(--gold-light);
+  font-size: 8px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tips-pick small {
   max-width: 96px;
   overflow: hidden;
