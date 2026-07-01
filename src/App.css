@@ -1886,7 +1886,8 @@ body {
   top: calc(100% + 6px);
   right: 0;
   z-index: 20;
-  width: min(238px, calc(100vw - 64px));
+  width: 460px;
+  max-width: calc(100vw - 32px);
   padding: 8px;
   border: 1px solid var(--dark-4);
   border-radius: 8px;
@@ -1902,9 +1903,18 @@ body {
   color: var(--text-dim);
   font-size: 10px;
   font-weight: 500;
+  white-space: nowrap;
 }
 .th-legend-menu > div + div {
   border-top: 1px solid var(--dark-4);
+}
+@media (max-width: 600px) {
+  .th-legend-menu {
+    width: calc(100vw - 32px);
+  }
+  .th-legend-menu > div {
+    white-space: normal;
+  }
 }
 .th-teams {
   display: grid;
