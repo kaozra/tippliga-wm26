@@ -1817,6 +1817,10 @@ body {
 }
 /* Tipp-Verlauf im User-Modal */
 .th-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   font-size: 13px;
   font-weight: 700;
   color: var(--text);
@@ -1846,6 +1850,61 @@ body {
   background: var(--dark-3);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
+}
+.th-legend-dropdown {
+  position: relative;
+  flex: 0 0 auto;
+}
+.th-legend-dropdown summary {
+  padding: 4px 8px;
+  border: 1px solid var(--dark-4);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.th-legend-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+.th-legend-dropdown summary::after {
+  content: " ▾";
+  color: var(--muted);
+}
+.th-legend-dropdown[open] summary {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.th-legend-dropdown[open] summary::after {
+  content: " ▴";
+}
+.th-legend-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: min(238px, calc(100vw - 64px));
+  padding: 8px;
+  border: 1px solid var(--dark-4);
+  border-radius: 8px;
+  background: var(--dark-2);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+.th-legend-menu > div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 500;
+}
+.th-legend-menu > div + div {
+  border-top: 1px solid var(--dark-4);
 }
 .th-teams {
   display: grid;

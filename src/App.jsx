@@ -4507,7 +4507,20 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
         </div>
 
         <div className="th-title">
-          Tipp-Verlauf <span className="th-sub">· nur gespielte Spiele</span>
+          <span>
+            Tipp-Verlauf <span className="th-sub">· nur gespielte Spiele</span>
+          </span>
+          <details className="th-legend-dropdown">
+            <summary>Wertung</summary>
+            <div className="th-legend-menu">
+              <div><span className="pts-5">⭐ 5</span><span>Exakt, inkl. Elfmetersieger</span></div>
+              <div><span className="pts-4">◆ 4</span><span>Exakt, Elfmeter falsch / Remis, Elfmeter richtig</span></div>
+              <div><span className="pts-3">✓ 3</span><span>Exakte Tordifferenz</span></div>
+              <div><span className="pts-2">+ 2</span><span>Sieger + eine Torzahl</span></div>
+              <div><span className="pts-1">~ 1</span><span>Nur Sieger</span></div>
+              <div><span className="pts-0">✗ 0</span><span>Falscher Spielausgang</span></div>
+            </div>
+          </details>
         </div>
         {playedMatches.length === 0 && (
           <div className="th-empty">Noch keine Spiele beendet.</div>
