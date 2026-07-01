@@ -2877,23 +2877,55 @@ function CombinedMatchesView({
     FIN: "Finale",
   };
 
-  for (const g of groupOrder) {
-    const isKo = KO_GROUPS.includes(g);
-    const matches = allParsed.filter((m) => m.group === g);
-
-    let sectionMatches = matches.filter((m) => {
-      const hasTip = tips[m.id] != null;
-      if (type === "OFFEN") return !hasTip && m.kickoff > now;
-      if (type === "GETIPPT") return hasTip || (m.kickoff <= now && !hasTip); // Getippte Spiele UND verpasste Spiele
-      return false;
-    });
-
-    if (sectionMatches.length > 0) {
-      sections.push({
-        groupId: g,
-        title: isKo ? koLabels[g] || g : `Gruppe ${g}`,
-        matches: sectionMatches,
+  if (type === "GETIPPT") {
+    const updatedAtMillis = (tip) => {
+      const value = tip?.updatedAt;
+      if (typeof value?.toMillis === "function") return value.toMillis();
+      if (value?.seconds != null) {
+        return Number(value.seconds) * 1000 + Number(value.nanoseconds || 0) / 1e6;
+      }
+      return 0;
+    };
+    const tippedMatches = allParsed
+      .filter((match) => tips[match.id] != null)
+      .sort((left, right) => {
+        const updatedDifference =
+          updatedAtMillis(tips[right.id]) - updatedAtMillis(tips[left.id]);
+        return updatedDifference || right.kickoff - left.kickoff;
       });
+    const missedMatches = allParsed
+      .filter((match) => !tips[match.id] && match.kickoff <= now)
+      .sort((left, right) => right.kickoff - left.kickoff);
+
+    if (tippedMatches.length > 0) {
+      sections.push({
+        groupId: "recent-tips",
+        title: "Zuletzt getippt",
+        matches: tippedMatches,
+      });
+    }
+    if (missedMatches.length > 0) {
+      sections.push({
+        groupId: "missed-tips",
+        title: "Nicht getippt",
+        matches: missedMatches,
+      });
+    }
+  } else {
+    for (const g of groupOrder) {
+      const isKo = KO_GROUPS.includes(g);
+      const matches = allParsed.filter((m) => m.group === g);
+      const sectionMatches = matches.filter(
+        (match) => !tips[match.id] && match.kickoff > now,
+      );
+
+      if (sectionMatches.length > 0) {
+        sections.push({
+          groupId: g,
+          title: isKo ? koLabels[g] || g : `Gruppe ${g}`,
+          matches: sectionMatches,
+        });
+      }
     }
   }
 
