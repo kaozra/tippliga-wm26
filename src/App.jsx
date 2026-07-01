@@ -4429,7 +4429,8 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
   const sortedByDate = [...tippedPlayed].sort((a, b) => {
     const ma = MATCHES.find((m) => m.id === a.matchId),
       mb = MATCHES.find((m) => m.id === b.matchId);
-    return (ma?.date + ma?.time || "").localeCompare(mb?.date + mb?.time || "");
+    return (ma ? parseMatchDate(ma).getTime() : 0) -
+      (mb ? parseMatchDate(mb).getTime() : 0);
   });
   let cur = 0;
   sortedByDate.forEach((t) => {
@@ -4443,7 +4444,7 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
   const playedMatches = MATCHES.filter((m) => {
     const r = results[m.id];
     return r && r.homeGoals != null;
-  }).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  }).sort((a, b) => parseMatchDate(b) - parseMatchDate(a));
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -4589,7 +4590,7 @@ function RangVerlauf({ board, allTips, results, uid }) {
   const played = MATCHES.filter((m) => {
     const r = results[m.id];
     return r && r.homeGoals != null;
-  }).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  }).sort((a, b) => parseMatchDate(a) - parseMatchDate(b));
 
   if (played.length < 2) return null;
 
@@ -4804,9 +4805,8 @@ function RanglisteTab({ uid, results }) {
       const sorted = [...played].sort((a, b) => {
         const ma = MATCHES.find((m) => m.id === a.matchId),
           mb = MATCHES.find((m) => m.id === b.matchId);
-        return (ma?.date + ma?.time || "").localeCompare(
-          mb?.date + mb?.time || "",
-        );
+        return (ma ? parseMatchDate(ma).getTime() : 0) -
+          (mb ? parseMatchDate(mb).getTime() : 0);
       });
       let cur = 0;
       sorted.forEach((t) => {
@@ -5067,7 +5067,8 @@ function ProfilTab({ user, profile, results, onProfileUpdate }) {
   const sortedByDate = [...tippedPlayed].sort((a, b) => {
     const ma = MATCHES.find((m) => m.id === a.matchId),
       mb = MATCHES.find((m) => m.id === b.matchId);
-    return (ma?.date + ma?.time || "").localeCompare(mb?.date + mb?.time || "");
+    return (ma ? parseMatchDate(ma).getTime() : 0) -
+      (mb ? parseMatchDate(mb).getTime() : 0);
   });
   let streak = 0,
     maxStreak = 0,
