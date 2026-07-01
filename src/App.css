@@ -780,8 +780,9 @@ body {
   text-align: center;
 }
 .pts-6 {
-  color: var(--gold);
+  color: #ff7a18;
   font-weight: 700;
+  text-shadow: 0 0 8px rgba(255, 122, 24, 0.35);
 }
 .pts-5 {
   color: var(--gold-light);
@@ -1990,7 +1991,8 @@ body {
   text-align: right;
 }
 .th-pts-6 {
-  color: var(--gold);
+  color: #ff7a18;
+  text-shadow: 0 0 7px rgba(255, 122, 24, 0.3);
 }
 .th-pts-5 {
   color: var(--gold-light);

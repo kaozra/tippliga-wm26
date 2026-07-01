@@ -1513,7 +1513,7 @@ function getResolvedMatch(match, results, resolving = new Set()) {
   );
 }
 function ptsLabel(pts) {
-  if (pts === 6) return <span className="pts-6">⭐ 6 Pkt</span>;
+  if (pts === 6) return <span className="pts-6">🔥 6 Pkt</span>;
   if (pts === 5) return <span className="pts-5">⭐ 5 Pkt</span>;
   if (pts === 4) return <span className="pts-4">◆ 4 Pkt</span>;
   if (pts === 3) return <span className="pts-3">✓ 3 Pkt</span>;
@@ -3711,7 +3711,7 @@ function TippenTab({ uid, results, onTeamClick: onMatchClick }) {
         }}
       >
         <span className="pts-legend-item">
-          <span className="pts-6">⭐ 6</span> Exaktes Resultat + richtiger
+          <span className="pts-6">🔥 6</span> Exaktes Resultat + richtiger
           Elfmetersieger
         </span>
         <span className="pts-legend-sep">·</span>
@@ -4528,7 +4528,7 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
             <span className="th-legend-toggle">Legende</span>
           </summary>
           <div className="th-legend-menu">
-            <div><span className="pts-6">⭐ 6</span><span>Exaktes Resultat + richtiger Elfmetersieger</span></div>
+            <div><span className="pts-6">🔥 6</span><span>Exaktes Resultat + richtiger Elfmetersieger</span></div>
             <div><span className="pts-5">⭐ 5</span><span>Exaktes Resultat</span></div>
             <div><span className="pts-4">◆ 4</span><span>Exaktes Resultat + falscher Elfmetersieger</span></div>
             <div><span className="pts-3">✓ 3</span><span>Exakte Tordifferenz</span></div>
@@ -4592,7 +4592,7 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
                       </span>
                       <span className={`th-pts th-pts-${p}`}>
                         {p === 6
-                          ? "⭐6"
+                          ? "🔥6"
                           : p === 5
                             ? "⭐5"
                           : p === 4
