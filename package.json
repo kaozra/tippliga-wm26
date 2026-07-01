@@ -12,6 +12,8 @@
     "test:sync": "npm --prefix scripts test",
     "test:scoring": "node --test src/scoring.test.js",
     "test:bracket": "node --test src/bracket.test.js",
+    "test:rules": "node --test firestore.rules.test.mjs",
+    "test:rules:emulator": "firebase emulators:exec --only firestore \"npm run test:rules\"",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -22,12 +24,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-tools": "^15.22.4",
     "globals": "^17.6.0",
     "vite": "^8.0.12"
   }

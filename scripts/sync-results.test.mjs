@@ -3,10 +3,29 @@ import test from "node:test";
 import {
   buildMatchMap,
   extractMatchState,
+  fetchMatches,
   fixTeam,
   goalEvents,
   sync,
 } from "./sync-results.mjs";
+
+test("classifies temporary OpenLigaDB failures", async () => {
+  await assert.rejects(
+    fetchMatches({
+      fetchImpl: async () => ({ ok: false, status: 503 }),
+    }),
+    /OpenLigaDB returned HTTP 503/,
+  );
+});
+
+test("rejects malformed OpenLigaDB responses", async () => {
+  await assert.rejects(
+    fetchMatches({
+      fetchImpl: async () => ({ ok: true, json: async () => ({}) }),
+    }),
+    /invalid response/,
+  );
+});
 
 function apiMatch(overrides = {}) {
   return {

@@ -6,6 +6,13 @@ export const LEAGUE = "wm26";
 export const SEASON = "2026";
 export const MAX_MATCH_DURATION_MS = 4 * 60 * 60 * 1000;
 
+export class OpenLigaDbUnavailableError extends Error {
+  constructor(message, options) {
+    super(message, options);
+    this.name = "OpenLigaDbUnavailableError";
+  }
+}
+
 const TEAM_FIX = {
   "Bosnien und Herzegowina": "Bosnien-Herzegowina",
   "Saudi Arabien": "Saudi-Arabien",
@@ -304,14 +311,31 @@ function meaningfulChanges(existing, patch) {
   );
 }
 
-async function fetchMatches() {
-  const response = await fetch(
-    `https://api.openligadb.de/getmatchdata/${LEAGUE}/${SEASON}`,
-  );
-  if (!response.ok) {
-    throw new Error(`OpenLigaDB returned HTTP ${response.status}`);
+export async function fetchMatches({ fetchImpl = fetch } = {}) {
+  const url = `https://api.openligadb.de/getmatchdata/${LEAGUE}/${SEASON}`;
+  try {
+    const response = await fetchImpl(url, {
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) {
+      throw new OpenLigaDbUnavailableError(
+        `OpenLigaDB returned HTTP ${response.status}`,
+      );
+    }
+    const matches = await response.json();
+    if (!Array.isArray(matches)) {
+      throw new OpenLigaDbUnavailableError(
+        "OpenLigaDB returned an invalid response",
+      );
+    }
+    return matches;
+  } catch (error) {
+    if (error instanceof OpenLigaDbUnavailableError) throw error;
+    throw new OpenLigaDbUnavailableError(
+      `OpenLigaDB request failed: ${error.message || error}`,
+      { cause: error },
+    );
   }
-  return response.json();
 }
 
 function initializeFirebase() {
@@ -422,8 +446,22 @@ export async function sync({ db = initializeFirebase(), matches } = {}) {
 }
 
 export async function main() {
-  const summary = await sync();
-  console.log(`[sync] ${JSON.stringify(summary)}`);
+  try {
+    const summary = await sync();
+    console.log(`[sync] ${JSON.stringify(summary)}`);
+  } catch (error) {
+    const message = String(error.message || error)
+      .replaceAll("%", "%25")
+      .replaceAll("\r", "%0D")
+      .replaceAll("\n", "%0A");
+    if (error instanceof OpenLigaDbUnavailableError) {
+      console.warn(`::warning title=OpenLigaDB temporarily unavailable::${message}`);
+      console.warn(`[sync] skipped: ${error.message}`);
+      return;
+    }
+    console.error(`::error title=WM 2026 result sync failed::${message}`);
+    throw error;
+  }
 }
 
 const isDirectRun =

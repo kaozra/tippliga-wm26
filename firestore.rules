@@ -1,0 +1,140 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email == 'kaozra@hotmail.com';
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function invitationExists(code) {
+      return code is string
+        && exists(/databases/$(database)/documents/invites/$(code));
+    }
+
+    function resultPath(matchId) {
+      return /databases/$(database)/documents/results/$(matchId);
+    }
+
+    function tippingIsOpen(matchId) {
+      return !exists(resultPath(matchId))
+        || (
+          !(get(resultPath(matchId)).data.status in ['LIVE', 'FT'])
+          && !('homeGoals' in get(resultPath(matchId)).data)
+        );
+    }
+
+    function validTip(tipId) {
+      return request.resource.data.keys().hasOnly([
+          'uid',
+          'matchId',
+          'homeGoals',
+          'awayGoals',
+          'penaltyWinner',
+          'updatedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && tipId == request.auth.uid + '__' + request.resource.data.matchId
+        && request.resource.data.matchId is string
+        && request.resource.data.homeGoals is int
+        && request.resource.data.homeGoals >= 0
+        && request.resource.data.homeGoals <= 30
+        && request.resource.data.awayGoals is int
+        && request.resource.data.awayGoals >= 0
+        && request.resource.data.awayGoals <= 30
+        && (
+          !('penaltyWinner' in request.resource.data)
+          || request.resource.data.penaltyWinner in ['home', 'away']
+        );
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly([
+          'displayName',
+          'email',
+          'inviteCode',
+          'invitedBy',
+          'createdAt'
+        ])
+        && request.resource.data.displayName is string
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.inviteCode is string
+        && (
+          isAdmin()
+          || invitationExists(request.resource.data.invitedBy)
+        );
+
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['displayName'])
+        && request.resource.data.displayName is string;
+
+      allow delete: if isAdmin();
+    }
+
+    match /invites/{code} {
+      allow get: if true;
+      allow list: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['ownerUid', 'createdAt'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.inviteCode == code;
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /tips/{tipId} {
+      allow read: if signedIn();
+
+      allow create, update: if signedIn()
+        && validTip(tipId)
+        && tippingIsOpen(request.resource.data.matchId);
+
+      allow delete: if isAdmin()
+        || (
+          signedIn()
+          && resource.data.uid == request.auth.uid
+          && tippingIsOpen(resource.data.matchId)
+        );
+    }
+
+    match /sondertips/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid);
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    match /results/{resultId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /events/{matchId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /playerstats/{documentId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

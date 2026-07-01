@@ -32,6 +32,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
+  deleteUser,
   signOut,
   onAuthStateChanged,
   updatePassword,
@@ -5955,23 +5956,44 @@ function RegisterForm({ onSwitch }) {
     const inv = code.trim().toUpperCase();
     if (email.toLowerCase() !== ADMIN_EMAIL) {
       if (!inv) return setErr("Einladungscode erforderlich");
-      const snap = await getDocs(collection(db, "users"));
-      if (!snap.docs.some((d) => d.data().inviteCode === inv))
+      const inviteSnap = await getDoc(doc(db, "invites", inv));
+      if (!inviteSnap.exists())
         return setErr("Ungültiger Code");
     }
     setLoading(true);
+    let createdUser = null;
+    let registrationStored = false;
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, pw);
+      createdUser = user;
+      let inviteCode = genCode();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const existing = await getDoc(doc(db, "invites", inviteCode));
+        if (!existing.exists()) break;
+        inviteCode = genCode();
+      }
       await updateProfile(user, { displayName: name.trim() });
-      await sendEmailVerification(user);
       await setDoc(doc(db, "users", user.uid), {
         displayName: name.trim(),
         email: email.toLowerCase(),
-        inviteCode: genCode(),
+        inviteCode,
         invitedBy: inv || null,
         createdAt: serverTimestamp(),
       });
+      await setDoc(doc(db, "invites", inviteCode), {
+        ownerUid: user.uid,
+        createdAt: serverTimestamp(),
+      });
+      registrationStored = true;
+      await sendEmailVerification(user);
     } catch (e) {
+      if (createdUser && !registrationStored) {
+        try {
+          await deleteUser(createdUser);
+        } catch {
+          // The account may already be fully registered; keep the original error.
+        }
+      }
       setErr(
         e.code === "auth/email-already-in-use"
           ? "E-Mail bereits registriert"

@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "migrate:invites": "node migrate-invites.mjs",
     "sync:playerstats": "node sync-playerstats.mjs",
     "sync:results": "node sync-results.mjs",
     "test": "node --test sync-results.test.mjs"
