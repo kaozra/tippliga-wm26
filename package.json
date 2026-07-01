@@ -11,6 +11,7 @@
     "sync:results": "npm --prefix scripts run sync:results",
     "test:sync": "npm --prefix scripts test",
     "test:scoring": "node --test src/scoring.test.js",
+    "test:bracket": "node --test src/bracket.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

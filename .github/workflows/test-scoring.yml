@@ -1,4 +1,4 @@
-name: Test scoring rules
+name: Test app rules
 
 on:
   push:
@@ -6,11 +6,15 @@ on:
     paths:
       - 'src/scoring.js'
       - 'src/scoring.test.js'
+      - 'src/bracket.js'
+      - 'src/bracket.test.js'
       - '.github/workflows/test-scoring.yml'
   pull_request:
     paths:
       - 'src/scoring.js'
       - 'src/scoring.test.js'
+      - 'src/bracket.js'
+      - 'src/bracket.test.js'
       - '.github/workflows/test-scoring.yml'
   workflow_dispatch:
 
@@ -30,3 +34,5 @@ jobs:
           node-version: '22'
       - name: Verify scoring rules
         run: npm run test:scoring
+      - name: Verify bracket progression
+        run: npm run test:bracket

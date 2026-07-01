@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import appCodeRaw from "./App.jsx?raw";
 import { calcPoints, hasMatchScore } from "./scoring.js";
+import { resolveBracketMatch } from "./bracket.js";
 import {
   Crosshair,
   Star,
@@ -1502,6 +1503,15 @@ function hasPenaltyScore(result) {
     result?.penaltyHomeGoals != null && result?.penaltyAwayGoals != null
   );
 }
+function getResolvedMatch(match, results, resolving = new Set()) {
+  return resolveBracketMatch(
+    match,
+    results,
+    MATCHES,
+    (team) => Boolean(TEAMS[team]),
+    resolving,
+  );
+}
 function ptsLabel(pts) {
   if (pts === 5) return <span className="pts-3">⭐ 5 Pkt</span>;
   if (pts === 3) return <span className="pts-2">✓ 3 Pkt</span>;
@@ -2003,8 +2013,8 @@ function MatchCard({
   const isLive =
     (now >= kickoff && now.getTime() <= kickoff.getTime() + 115 * 60 * 1000) ||
     result?.status === "LIVE";
-  const isKo = !TEAMS[match.home];
   const isKoGroup = KO_GROUPS.includes(match.group);
+  const isKo = isKoGroup;
   const [h, setH] = useState(tip?.homeGoals ?? "");
   const [a, setA] = useState(tip?.awayGoals ?? "");
   const [penWinner, setPenWinner] = useState(tip?.penaltyWinner || null);
@@ -2442,7 +2452,10 @@ function LiveView({
   allUsers = [],
   allEvents = {},
 }) {
-  const allParsed = MATCHES.map((m) => ({ ...m, kickoff: parseMatchDate(m) }));
+  const allParsed = MATCHES.map((match) => {
+    const resolved = getResolvedMatch(match, results);
+    return { ...resolved, kickoff: parseMatchDate(resolved) };
+  });
 
   const liveMatches = allParsed.filter(
     (m) =>
@@ -2497,7 +2510,10 @@ function NextView({
   allUsers = [],
   allEvents = {},
 }) {
-  const allParsed = MATCHES.map((m) => ({ ...m, kickoff: parseMatchDate(m) }));
+  const allParsed = MATCHES.map((match) => {
+    const resolved = getResolvedMatch(match, results);
+    return { ...resolved, kickoff: parseMatchDate(resolved) };
+  });
 
   const upcoming = allParsed
     .filter((m) => m.kickoff > now)
@@ -2613,8 +2629,11 @@ function SpielplanTab({ results, onTeamClick }) {
     now.getMonth(),
     now.getDate(),
   );
+  const displayMatches = MATCHES.map((match) =>
+    getResolvedMatch(match, results),
+  );
 
-  const allDates = [...new Set(MATCHES.map((m) => m.date))].sort((a, b) => {
+  const allDates = [...new Set(displayMatches.map((m) => m.date))].sort((a, b) => {
     const [da, ma, ya] = a.split("."),
       [db, mb, yb] = b.split(".");
     return new Date(+ya, +ma - 1, +da) - new Date(+yb, +mb - 1, +db);
@@ -2647,7 +2666,7 @@ function SpielplanTab({ results, onTeamClick }) {
         now <= new Date(kickoff.getTime() + 115 * 60 * 1000)) ||
       r?.status === "LIVE";
     const isDone = r && r.homeGoals != null;
-    const isKo = !TEAMS[m.home];
+    const isKo = KO_GROUPS.includes(m.group);
     const grpLbl = KO_GROUPS.includes(m.group)
       ? {
           R32: "Sechzehntelfinale",
@@ -2746,7 +2765,7 @@ function SpielplanTab({ results, onTeamClick }) {
   }
 
   function DayBlock({ s, highlight }) {
-    const ms = MATCHES.filter((m) => m.date === s);
+    const ms = displayMatches.filter((m) => m.date === s);
     return (
       <div className={`sp2-day${highlight ? " sp2-today" : ""}`}>
         <div className="sp2-day-hdr">
@@ -2864,7 +2883,10 @@ function CombinedMatchesView({
   allUsers = [],
   allEvents = {},
 }) {
-  const allParsed = MATCHES.map((m) => ({ ...m, kickoff: parseMatchDate(m) }));
+  const allParsed = MATCHES.map((match) => {
+    const resolved = getResolvedMatch(match, results);
+    return { ...resolved, kickoff: parseMatchDate(resolved) };
+  });
 
   const sections = [];
   const groupOrder = [...Object.keys(GROUPS), ...KO_GROUPS];
@@ -2975,8 +2997,8 @@ function CombinedMatchesView({
 // ── SONDERTIPPS ───────────────────────────────────────────────────────────────
 function getKnockoutTeams(results) {
   const r32Teams = MATCHES.filter((m) => m.group === "R32").flatMap((m) => {
-    const result = results[m.id] || {};
-    return [result.koHome || m.home, result.koAway || m.away];
+    const resolved = getResolvedMatch(m, results);
+    return [resolved.home, resolved.away];
   });
 
   const groupMatches = MATCHES.filter((m) => GROUPS[m.group]);
@@ -3532,7 +3554,10 @@ function TippenTab({ uid, results, onTeamClick: onMatchClick }) {
     await setDoc(doc(db, "tips", `${uid}__${matchId}`), data);
   }
 
-  const allParsed = MATCHES.map((m) => ({ ...m, kickoff: parseMatchDate(m) }));
+  const allParsed = MATCHES.map((match) => {
+    const resolved = getResolvedMatch(match, results);
+    return { ...resolved, kickoff: parseMatchDate(resolved) };
+  });
   const liveMatches = allParsed.filter(
     (m) =>
       (now >= m.kickoff &&
@@ -3791,12 +3816,9 @@ function KoBracket({ results, onTeamClick, onShowTips }) {
 
   function getDisplayMatch(match) {
     const result = results[match.id] || {};
+    const resolved = getResolvedMatch(match, results);
     return {
-      ...match,
-      home: result.koHome || match.home,
-      away: result.koAway || match.away,
-      date: result.koDate || match.date,
-      time: result.koTime || match.time,
+      ...resolved,
       result,
     };
   }
@@ -4484,8 +4506,9 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
             const r = results[m.id];
             const t = myTips.find((x) => x.matchId === m.id);
             const p = t ? calcPoints(t, r) : null;
-            const homeName = r.koHome || m.home;
-            const awayName = r.koAway || m.away;
+            const resolved = getResolvedMatch(m, results);
+            const homeName = resolved.home;
+            const awayName = resolved.away;
             const hc = TEAMS[homeName]?.code,
               ac = TEAMS[awayName]?.code;
             const resultPenaltyTeam = r.penaltyWinner
