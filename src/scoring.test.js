@@ -2,6 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { calcPoints, maxPointsForResult } from "./scoring.js";
 
+test("does not award provisional points for a live match", () => {
+  assert.equal(
+    calcPoints(
+      { homeGoals: 2, awayGoals: 1 },
+      { homeGoals: 2, awayGoals: 1, status: "LIVE" },
+    ),
+    null,
+  );
+});
+
 test("awards six points for an exact score and correct shootout winner", () => {
   assert.equal(
     calcPoints(

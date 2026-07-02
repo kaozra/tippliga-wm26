@@ -1,5 +1,9 @@
 export function hasMatchScore(result) {
-  return result?.homeGoals != null && result?.awayGoals != null;
+  return (
+    result?.homeGoals != null &&
+    result?.awayGoals != null &&
+    result?.status !== "LIVE"
+  );
 }
 
 export function calcPoints(tip, result) {

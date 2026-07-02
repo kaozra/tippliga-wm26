@@ -6,6 +6,8 @@ on:
     paths:
       - 'scripts/sync-results.mjs'
       - 'scripts/sync-results.test.mjs'
+      - 'src/fifa-results.js'
+      - '.github/workflows/sync-results.yml'
   schedule:
     # Alle 5 Minuten in den WM-Spielfenstern (UTC). Die Datumsgrenzen verhindern,
     # dass der einmalige Turnier-Sync nach dem Finale dauerhaft weiterläuft.
@@ -13,6 +15,10 @@ on:
     - cron: '*/5 0-5 28-30 6 *'
     - cron: '*/5 16-23 1-19 7 *'
     - cron: '*/5 0-5 1-20 7 *'
+    # Täglicher Vollabgleich gegen FIFA korrigiert auch nachträgliche
+    # offizielle Resultatänderungen, ohne Firestore-Lesezugriffe zu verbrauchen.
+    - cron: '17 6 11-30 6 *'
+    - cron: '17 6 1-20 7 *'
   workflow_dispatch:  # manueller Trigger
 
 permissions:
@@ -28,6 +34,7 @@ jobs:
     timeout-minutes: 5
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      SYNC_MODE: ${{ github.event_name == 'schedule' && startsWith(github.event.schedule, '*/5') && 'live' || 'full' }}
 
     steps:
       - uses: actions/checkout@v5

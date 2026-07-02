@@ -3,6 +3,13 @@ import appCodeRaw from "./App.jsx?raw";
 import { calcPoints, hasMatchScore, maxPointsForResult } from "./scoring.js";
 import { resolveBracketMatch } from "./bracket.js";
 import {
+  buildFifaMatchMap,
+  extractFifaMatchState,
+  fetchFifaMatches,
+  fifaDateParts,
+  fifaTeamName,
+} from "./fifa-results.js";
+import {
   Crosshair,
   Star,
   Flame,
@@ -4426,7 +4433,7 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
   const myTips = allTips.filter((t) => t.uid === user.uid);
   const tippedPlayed = myTips.filter((t) => {
     const r = results[t.matchId];
-    return r && r.homeGoals != null;
+    return hasMatchScore(r);
   });
   const pts = tippedPlayed.reduce(
     (s, t) => s + (calcPoints(t, results[t.matchId]) || 0),
@@ -4463,7 +4470,7 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
   // Nur durchgespielte Spiele (mit Ergebnis), neueste zuerst — NIE laufende/zukünftige Tipps
   const playedMatches = MATCHES.filter((m) => {
     const r = results[m.id];
-    return r && r.homeGoals != null;
+    return hasMatchScore(r);
   }).sort((a, b) => parseMatchDate(b) - parseMatchDate(a));
 
   return (
@@ -4627,7 +4634,7 @@ function RangVerlauf({ board, allTips, results, uid }) {
   // Played matches sorted chronologically
   const played = MATCHES.filter((m) => {
     const r = results[m.id];
-    return r && r.homeGoals != null;
+    return hasMatchScore(r);
   }).sort((a, b) => parseMatchDate(a) - parseMatchDate(b));
 
   if (played.length < 2) return null;
@@ -4828,7 +4835,7 @@ function RanglisteTab({ uid, results }) {
       const myT = allTips.filter((t) => t.uid === u.uid);
       const played = myT.filter((t) => {
         const r = results[t.matchId];
-        return r && r.homeGoals != null;
+        return hasMatchScore(r);
       });
       const exact = played.filter(
         (t) => (calcPoints(t, results[t.matchId]) || 0) >= 5,
@@ -4915,7 +4922,7 @@ function RanglisteTab({ uid, results }) {
   const leaderPts = board[0]?.pts || 0;
   const playedCount = MATCHES.filter((m) => {
     const r = results[m.id];
-    return r && r.homeGoals != null;
+    return hasMatchScore(r);
   }).length;
 
   return (
@@ -5080,11 +5087,11 @@ function ProfilTab({ user, profile, results, onProfileUpdate }) {
 
   const playedMatches = MATCHES.filter((m) => {
     const r = results[m.id];
-    return r && r.homeGoals != null;
+    return hasMatchScore(r);
   });
   const tippedPlayed = myTips.filter((t) => {
     const r = results[t.matchId];
-    return r && r.homeGoals != null;
+    return hasMatchScore(r);
   });
   const pts = tippedPlayed.reduce(
     (s, t) => s + (calcPoints(t, results[t.matchId]) || 0),
@@ -5340,7 +5347,7 @@ function EinladenTab({ profile }) {
 }
 
 // ── GLOBAL BACKGROUND SYNC ────────────────────────────────────────────────────────────
-function BackgroundSyncer({ results }) {
+function LegacyBackgroundSyncer({ results }) {
   const resultsRef = useRef(results);
 
   useEffect(() => {
@@ -5694,6 +5701,120 @@ function BackgroundSyncer({ results }) {
 
   return null;
 }
+
+// FIFA is the authoritative source. This lightweight client-side overlay keeps
+// live scores fresh even when GitHub's scheduled jobs start a few minutes late.
+// It never writes to Firestore, so every signed-in browser remains read-only.
+function BackgroundSyncer({ setResults }) {
+  useEffect(() => {
+    let cancelled = false;
+    let timer;
+
+    const groupLookup = new Map();
+    MATCHES.filter((match) => !KO_GROUPS.includes(match.group)).forEach(
+      (match) => {
+        groupLookup.set(`${match.home}|${match.away}`, {
+          matchId: match.id,
+          swap: false,
+          round: match.group,
+        });
+        groupLookup.set(`${match.away}|${match.home}`, {
+          matchId: match.id,
+          swap: true,
+          round: match.group,
+        });
+      },
+    );
+
+    async function refresh() {
+      let nextDelay;
+      try {
+        const officialMatches = await fetchFifaMatches();
+        if (cancelled) return;
+        const mapping = buildFifaMatchMap(officialMatches, (home, away) =>
+          groupLookup.get(`${home}|${away}`),
+        );
+        const now = Date.now();
+        const updates = new Map();
+        let activeWindow = false;
+
+        for (const officialMatch of officialMatches) {
+          const mapped = mapping.get(String(officialMatch.IdMatch));
+          if (!mapped) continue;
+          const state = extractFifaMatchState(officialMatch, mapped.swap, now);
+          const kickoff = new Date(officialMatch.Date).getTime();
+          if (
+            state.status === "LIVE" ||
+            (Number.isFinite(kickoff) &&
+              now >= kickoff - 5 * 60 * 1000 &&
+              now <= kickoff + 5 * 60 * 60 * 1000)
+          ) {
+            activeWindow = true;
+          }
+
+          const patch = {
+            matchId: mapped.matchId,
+            source: "fifa",
+            sourceMatchId: String(officialMatch.IdMatch),
+            sourceMatchNumber: Number(officialMatch.MatchNumber),
+            status: state.status,
+            penaltyWinner: state.penaltyWinner,
+            penaltyHomeGoals: state.penaltyHomeGoals,
+            penaltyAwayGoals: state.penaltyAwayGoals,
+          };
+          if (state.homeGoals != null && state.awayGoals != null) {
+            patch.homeGoals = state.homeGoals;
+            patch.awayGoals = state.awayGoals;
+          }
+          if (KO_GROUPS.includes(mapped.round)) {
+            const home = fifaTeamName(
+              mapped.swap ? officialMatch.Away : officialMatch.Home,
+            );
+            const away = fifaTeamName(
+              mapped.swap ? officialMatch.Home : officialMatch.Away,
+            );
+            const parts = fifaDateParts(officialMatch);
+            if (home && TEAMS[home]) patch.koHome = home;
+            if (away && TEAMS[away]) patch.koAway = away;
+            if (parts.date) patch.koDate = parts.date;
+            if (parts.time) patch.koTime = parts.time;
+            patch.koRound = mapped.round;
+          }
+          updates.set(mapped.matchId, patch);
+        }
+
+        setResults((previous) => {
+          const next = { ...previous };
+          for (const [matchId, patch] of updates) {
+            next[matchId] = { ...(next[matchId] || {}), ...patch };
+            if (!("homeGoals" in patch)) {
+              delete next[matchId].homeGoals;
+              delete next[matchId].awayGoals;
+            }
+          }
+          return next;
+        });
+        nextDelay = activeWindow ? 60 * 1000 : 15 * 60 * 1000;
+      } catch (error) {
+        console.warn("FIFA live sync failed", error);
+        nextDelay = 5 * 60 * 1000;
+      }
+      if (!cancelled) timer = setTimeout(refresh, nextDelay);
+    }
+
+    timer = setTimeout(refresh, 1000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [setResults]);
+
+  return null;
+}
+
+// Keep the retired writer referenced so linting can verify it while no code
+// path can execute it. It can be removed after all deployed clients refresh.
+void LegacyBackgroundSyncer;
 
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
 function AdminTab({ results }) {
@@ -6272,11 +6393,15 @@ export default function App() {
       return;
     }
     const uid = authUser.uid;
-    const unsub = onSnapshot(collection(db, "tips"), (snap) => {
+    const ownTipsQuery = query(
+      collection(db, "tips"),
+      where("uid", "==", uid),
+    );
+    const unsub = onSnapshot(ownTipsQuery, (snap) => {
       const tipped = new Set();
       snap.docs.forEach((d) => {
         const data = d.data();
-        if (data.uid === uid) tipped.add(data.matchId);
+        tipped.add(data.matchId);
       });
       const now2 = new Date();
       setUntippedCount(
@@ -6413,7 +6538,7 @@ export default function App() {
           <button onClick={() => setShowIosHint(false)}>✕</button>
         </div>
       )}
-      <BackgroundSyncer results={results} />
+      <BackgroundSyncer setResults={setResults} />
       {showSonderPopup && (
         <SonderPopup onClose={dismissSonderPopup} onGo={goToSonder} />
       )}

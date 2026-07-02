@@ -1,6 +1,14 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { pathToFileURL } from "node:url";
+import {
+  buildFifaMatchMap,
+  extractFifaMatchState,
+  fetchFifaMatches,
+  fifaDateParts,
+  fifaTeamName,
+  isLiveSyncCandidate,
+} from "../src/fifa-results.js";
 
 export const LEAGUE = "wm26";
 export const SEASON = "2026";
@@ -109,6 +117,7 @@ const ROUND_CONFIG = {
   8: { round: "P3", id: () => "P3" },
   9: { round: "FIN", id: () => "FIN" },
 };
+const KO_ROUND_NAMES = new Set(["R32", "R16", "QF", "SF", "P3", "FIN"]);
 
 const GROUP_LOOKUP = new Map();
 for (const match of GROUP_MATCHES) {
@@ -290,27 +299,6 @@ export function getEventsVersion(events) {
   return `${events.length}-${(hash >>> 0).toString(36)}`;
 }
 
-function apiDateParts(match) {
-  const [date = "", timeWithSeconds = ""] = String(
-    match.matchDateTime || "",
-  ).split("T");
-  const [year, month, day] = date.split("-");
-  return {
-    date: year && month && day ? `${day}.${month}.${year}` : null,
-    time: timeWithSeconds ? timeWithSeconds.slice(0, 5) : null,
-  };
-}
-
-function sameValue(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function meaningfulChanges(existing, patch) {
-  return Object.entries(patch).some(
-    ([key, value]) => !sameValue(existing?.[key], value),
-  );
-}
-
 export async function fetchMatches({ fetchImpl = fetch } = {}) {
   const url = `https://api.openligadb.de/getmatchdata/${LEAGUE}/${SEASON}`;
   try {
@@ -349,55 +337,80 @@ function initializeFirebase() {
   return getFirestore();
 }
 
-export async function sync({ db = initializeFirebase(), matches } = {}) {
-  const apiMatches = matches || (await fetchMatches());
-  const mapping = buildMatchMap(apiMatches);
-  const [resultSnapshot, eventSnapshot] = await Promise.all([
-    db.collection("results").get(),
-    db.collection("events").get(),
-  ]);
-  const existingResults = new Map(
-    resultSnapshot.docs.map((document) => [document.id, document.data()]),
-  );
-  const existingEvents = new Map(
-    eventSnapshot.docs.map((document) => [document.id, document.data()]),
+export async function sync({
+  db = initializeFirebase(),
+  fifaMatches,
+  matches,
+  mode = process.env.SYNC_MODE || "full",
+  now = Date.now(),
+} = {}) {
+  const officialMatches = fifaMatches || (await fetchFifaMatches());
+  const officialMapping = buildFifaMatchMap(officialMatches, (home, away) =>
+    GROUP_LOOKUP.get(`${home}|${away}`),
   );
 
+  // OpenLigaDB is retained only for goal-event metadata. Scores, match status
+  // and penalty shootouts always come from FIFA's official endpoint.
+  let eventSourceMatches = matches;
+  if (!eventSourceMatches) {
+    try {
+      eventSourceMatches = await fetchMatches();
+    } catch (error) {
+      if (!(error instanceof OpenLigaDbUnavailableError)) throw error;
+      console.warn(`[sync] OpenLigaDB events skipped: ${error.message}`);
+      eventSourceMatches = [];
+    }
+  }
+  const eventMapping = buildMatchMap(eventSourceMatches);
+  const eventsByMatchId = new Map();
+  for (const match of eventSourceMatches) {
+    const mapped = eventMapping.get(match.matchID);
+    if (!mapped) continue;
+    const events = goalEvents(match);
+    if (events.length > 0) eventsByMatchId.set(mapped.matchId, events);
+  }
+
+  const selectedMatches = officialMatches.filter(
+    (match) => mode === "full" || isLiveSyncCandidate(match, now),
+  );
   const batch = db.batch();
   let resultWrites = 0;
   let eventWrites = 0;
   let skipped = 0;
 
-  for (const apiMatch of apiMatches) {
-    const mapped = mapping.get(apiMatch.matchID);
+  for (const officialMatch of selectedMatches) {
+    const mapped = officialMapping.get(String(officialMatch.IdMatch));
     if (!mapped) {
       skipped += 1;
       continue;
     }
 
     const { matchId, swap, round } = mapped;
-    const existing = existingResults.get(matchId) || {};
-    const state = extractMatchState(apiMatch, swap);
-    const home = fixTeam(apiMatch.team1?.teamName);
-    const away = fixTeam(apiMatch.team2?.teamName);
-    const { date, time } = apiDateParts(apiMatch);
+    const state = extractFifaMatchState(officialMatch, swap, now);
+    const home = fifaTeamName(swap ? officialMatch.Away : officialMatch.Home);
+    const away = fifaTeamName(swap ? officialMatch.Home : officialMatch.Away);
+    const { date, time } = fifaDateParts(officialMatch);
     const patch = {
       matchId,
-      source: "openligadb",
-      sourceMatchId: apiMatch.matchID,
+      source: "fifa",
+      sourceMatchId: String(officialMatch.IdMatch),
+      sourceMatchNumber: Number(officialMatch.MatchNumber),
       status: state.status,
+      penaltyWinner: state.penaltyWinner || FieldValue.delete(),
+      penaltyHomeGoals:
+        state.penaltyHomeGoals ?? FieldValue.delete(),
+      penaltyAwayGoals:
+        state.penaltyAwayGoals ?? FieldValue.delete(),
     };
 
     if (state.homeGoals != null && state.awayGoals != null) {
       patch.homeGoals = state.homeGoals;
       patch.awayGoals = state.awayGoals;
+    } else {
+      patch.homeGoals = FieldValue.delete();
+      patch.awayGoals = FieldValue.delete();
     }
-    if (state.penaltyWinner) {
-      patch.penaltyWinner = state.penaltyWinner;
-      patch.penaltyHomeGoals = state.penaltyHomeGoals;
-      patch.penaltyAwayGoals = state.penaltyAwayGoals;
-    }
-    if (ROUND_CONFIG[Number(apiMatch.group?.groupOrderID)]) {
+    if (round && KO_ROUND_NAMES.has(round)) {
       if (KNOWN_TEAMS.has(home)) patch.koHome = home;
       if (KNOWN_TEAMS.has(away)) patch.koAway = away;
       if (date) patch.koDate = date;
@@ -405,22 +418,17 @@ export async function sync({ db = initializeFirebase(), matches } = {}) {
       patch.koRound = round;
     }
 
-    const events = goalEvents(apiMatch);
+    const events = eventsByMatchId.get(matchId) || [];
     if (events.length > 0) patch.eventsVersion = getEventsVersion(events);
 
-    const resultChanged = meaningfulChanges(existing, patch);
+    batch.set(
+      db.collection("results").doc(matchId),
+      { ...patch, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+    resultWrites += 1;
 
-    if (resultChanged) {
-      batch.set(
-        db.collection("results").doc(matchId),
-        { ...patch, updatedAt: FieldValue.serverTimestamp() },
-        { merge: true },
-      );
-      resultWrites += 1;
-    }
-
-    const existingEventList = existingEvents.get(matchId)?.events || [];
-    if (events.length > 0 && !sameValue(existingEventList, events)) {
+    if (events.length > 0) {
       batch.set(
         db.collection("events").doc(matchId),
         {
@@ -437,8 +445,10 @@ export async function sync({ db = initializeFirebase(), matches } = {}) {
 
   if (resultWrites + eventWrites > 0) await batch.commit();
   return {
-    apiMatches: apiMatches.length,
-    mapped: mapping.size,
+    mode,
+    fifaMatches: officialMatches.length,
+    selectedMatches: selectedMatches.length,
+    mapped: officialMapping.size,
     resultWrites,
     eventWrites,
     skipped,

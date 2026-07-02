@@ -8,6 +8,11 @@ import {
   goalEvents,
   sync,
 } from "./sync-results.mjs";
+import {
+  buildFifaMatchMap,
+  extractFifaMatchState,
+  validateFifaFeed,
+} from "../src/fifa-results.js";
 
 test("classifies temporary OpenLigaDB failures", async () => {
   await assert.rejects(
@@ -41,6 +46,56 @@ function apiMatch(overrides = {}) {
     ...overrides,
   };
 }
+
+function fifaMatch(overrides = {}) {
+  return {
+    IdMatch: "400000001",
+    MatchNumber: 73,
+    Date: "2026-06-28T19:00:00Z",
+    MatchStatus: 0,
+    Home: { Abbreviation: "RSA", ShortClubName: "South Africa", Score: 1 },
+    Away: { Abbreviation: "CAN", ShortClubName: "Canada", Score: 1 },
+    HomeTeamScore: 1,
+    AwayTeamScore: 1,
+    HomeTeamPenaltyScore: 4,
+    AwayTeamPenaltyScore: 3,
+    ...overrides,
+  };
+}
+
+test("rejects a partial FIFA feed before it can overwrite results", () => {
+  assert.throws(() => validateFifaFeed([fifaMatch()]), /nur 1 von 104/);
+});
+
+test("maps FIFA group fixtures and chronological knockout rounds", () => {
+  const group = fifaMatch({
+    IdMatch: "10",
+    MatchNumber: 1,
+    Home: { Abbreviation: "MEX", ShortClubName: "Mexico" },
+    Away: { Abbreviation: "RSA", ShortClubName: "South Africa" },
+  });
+  const later = fifaMatch({ IdMatch: "12", MatchNumber: 74, Date: "2026-06-29T01:00:00Z" });
+  const earlier = fifaMatch({ IdMatch: "11", MatchNumber: 73, Date: "2026-06-28T19:00:00Z" });
+  const mapping = buildFifaMatchMap([group, later, earlier], (home, away) =>
+    home === "Mexiko" && away === "Südafrika"
+      ? { matchId: "A1", swap: false, round: "A" }
+      : null,
+  );
+  assert.equal(mapping.get("10").matchId, "A1");
+  assert.equal(mapping.get("11").matchId, "R32_1");
+  assert.equal(mapping.get("12").matchId, "R32_2");
+});
+
+test("uses official FIFA score and shootout data", () => {
+  assert.deepEqual(extractFifaMatchState(fifaMatch()), {
+    homeGoals: 1,
+    awayGoals: 1,
+    status: "FT",
+    penaltyWinner: "home",
+    penaltyHomeGoals: 4,
+    penaltyAwayGoals: 3,
+  });
+});
 
 test("normalizes team names used by the app", () => {
   assert.equal(fixTeam("Bosnien und Herzegowina"), "Bosnien-Herzegowina");
@@ -251,7 +306,7 @@ test("sync writes knockout metadata, final score, penalties and events atomicall
     ],
   });
   const { db, writes } = fakeFirestore();
-  const summary = await sync({ db, matches: [match] });
+  const summary = await sync({ db, fifaMatches: [fifaMatch()], matches: [match] });
 
   assert.equal(summary.mapped, 1);
   assert.equal(summary.resultWrites, 1);
@@ -266,6 +321,7 @@ test("sync writes knockout metadata, final score, penalties and events atomicall
   assert.equal(resultWrite.data.penaltyWinner, "home");
   assert.equal(resultWrite.data.koHome, "Südafrika");
   assert.equal(resultWrite.data.koAway, "Kanada");
+  assert.equal(resultWrite.data.source, "fifa");
   assert.match(resultWrite.data.eventsVersion, /^2-/);
 
   const eventWrite = writes.find(
