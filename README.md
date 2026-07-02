@@ -19,14 +19,18 @@ npm run build
 
 ## Automatischer Ergebnis-Sync
 
-OpenLigaDB liefert Paarungen, Termine, Live-Spielstände, Endresultate und
-Torereignisse. Der Sync unterstützt Gruppenphase und alle K.-o.-Runden sowie
-Verlängerung und Elfmeterschießen.
+Die offizielle FIFA-API liefert Paarungen, Termine, Live-Spielstände,
+Endresultate und Elfmeterschießen. OpenLigaDB wird nur noch ergänzend für
+Torereignisse verwendet. Der Sync unterstützt Gruppenphase und alle
+K.-o.-Runden sowie Verlängerung und Elfmeterschießen.
 
 - `.github/workflows/sync-results.yml` läuft während der WM-Spielfenster alle
-  fünf Minuten und schreibt nur tatsächlich geänderte Daten nach Firestore.
-- Die geöffnete App fragt während laufender Spiele minütlich ab und dient als
-  schneller Live-Fallback.
+  fünf Minuten. Er schreibt nur die zeitnah relevanten Spiele und benötigt
+  keine Firestore-Lesezugriffe.
+- Ein täglicher Vollabgleich korrigiert auch nachträgliche Änderungen der
+  offiziellen Resultate und entfernt veraltete Elfmeterschießen-Felder.
+- Die geöffnete App fragt FIFA während laufender Spiele minütlich rein lesend
+  ab und dient als schneller Live-Fallback.
 - `.github/workflows/sync-playerstats.yml` aktualisiert täglich die
   Torschützenliste.
 
