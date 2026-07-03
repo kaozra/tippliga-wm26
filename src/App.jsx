@@ -2201,7 +2201,7 @@ function MatchCard({
             <img src={flagUrl(homeCode)} className="mc2-flag" alt="" />
           )}
           <span className="mc2-name">{match.home}</span>
-          {!isKo && hStr != null && (
+          {hStr != null && (
             <span
               className="mc2-str"
               style={{
@@ -2305,7 +2305,7 @@ function MatchCard({
             <img src={flagUrl(awayCode)} className="mc2-flag" alt="" />
           )}
           <span className="mc2-name">{match.away}</span>
-          {!isKo && aStr != null && (
+          {aStr != null && (
             <span
               className="mc2-str"
               style={{
