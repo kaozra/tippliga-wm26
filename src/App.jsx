@@ -1656,13 +1656,13 @@ function MatchModal({ match, onClose, results }) {
   function renderTeamStats(team) {
     const t = TEAMS[team] || {};
     const sc = strengthColor(t.strength || 0);
-    const teamMatches = MATCHES.filter(
-      (m) => m.home === team || m.away === team,
-    );
+    const teamMatches = MATCHES.map((m) =>
+      getResolvedMatch(m, results),
+    ).filter((m) => m.home === team || m.away === team);
     const stats = teamMatches.reduce(
       (s, m) => {
         const r = results[m.id];
-        if (!r || r.homeGoals == null) return s;
+        if (!hasMatchScore(r)) return s;
         const isH = m.home === team;
         const gf = isH ? r.homeGoals : r.awayGoals,
           ga = isH ? r.awayGoals : r.homeGoals;
@@ -1682,8 +1682,7 @@ function MatchModal({ match, onClose, results }) {
 
     // Bisherige Spiele ohne dieses Match
     const pastMatches = teamMatches.filter(
-      (m) =>
-        m.id !== match.id && results[m.id] && results[m.id].homeGoals != null,
+      (m) => m.id !== match.id && hasMatchScore(results[m.id]),
     );
 
     return (
@@ -1821,7 +1820,7 @@ function MatchModal({ match, onClose, results }) {
     );
   }
 
-  const isKo = !TEAMS[match.home];
+  const isKo = !TEAMS[match.home] || !TEAMS[match.away];
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -2089,13 +2088,13 @@ function MatchCard({
 
   const getTeamStats = (team) => {
     if (!team || !allResults) return null;
-    const teamMatches = MATCHES.filter(
-      (m) => m.home === team || m.away === team,
-    );
+    const teamMatches = MATCHES.map((m) =>
+      getResolvedMatch(m, allResults),
+    ).filter((m) => m.home === team || m.away === team);
     const stats = teamMatches.reduce(
       (s, m) => {
         const r = allResults[m.id];
-        if (!r || r.homeGoals == null) return s;
+        if (!hasMatchScore(r)) return s;
         const isH = m.home === team;
         const gf = isH ? r.homeGoals : r.awayGoals;
         const ga = isH ? r.awayGoals : r.homeGoals;
@@ -2114,8 +2113,8 @@ function MatchCard({
     return stats.sp > 0 ? stats : null;
   };
 
-  const homeStats = !isKo ? getTeamStats(match.home) : null;
-  const awayStats = !isKo ? getTeamStats(match.away) : null;
+  const homeStats = getTeamStats(match.home);
+  const awayStats = getTeamStats(match.away);
 
   return (
     <div
@@ -2132,7 +2131,7 @@ function MatchCard({
           ) : !locked ? (
             <Countdown kickoff={kickoff} />
           ) : null}
-          {!isKo && onMatchClick && (
+          {onMatchClick && TEAMS[match.home] && TEAMS[match.away] && (
             <button
               className="mc2-stats-btn"
               onClick={() => onMatchClick(match)}
@@ -2170,7 +2169,7 @@ function MatchCard({
             {showDeadline && <span className="deadline-badge">&lt;1h</span>}
             <span className="mc2-metagrp"> · {grpLbl}</span>
           </div>
-          {!isKo && onMatchClick && (
+          {onMatchClick && TEAMS[match.home] && TEAMS[match.away] && (
             <button
               className="mc2-stats-btn"
               onClick={() => onMatchClick(match)}
