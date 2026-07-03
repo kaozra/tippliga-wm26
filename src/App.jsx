@@ -2115,6 +2115,8 @@ function MatchCard({
 
   const homeStats = getTeamStats(match.home);
   const awayStats = getTeamStats(match.away);
+  const showPenaltyChoice =
+    isKoGroup && tipIsDraw && !locked && !hasResult;
 
   return (
     <div
@@ -2318,8 +2320,10 @@ function MatchCard({
         </div>
       </div>
 
-      {(homeStats || awayStats) && (
-        <div className="mc2-bottom-stats">
+      {(homeStats || awayStats || showPenaltyChoice) && (
+        <div
+          className={`mc2-bottom-stats${showPenaltyChoice ? " has-penalty-choice" : ""}`}
+        >
           {homeStats && (
             <div className="bstats-side bstats-left">
               <span className="bstats-lbl">Sp</span>
@@ -2344,6 +2348,27 @@ function MatchCard({
                 {homeStats.gf - homeStats.ga > 0 ? "+" : ""}
                 {homeStats.gf - homeStats.ga}
               </span>
+            </div>
+          )}
+          {showPenaltyChoice && (
+            <div className="pen-row pen-row-inline">
+              <span className="pen-label">
+                <span className="pen-label-wide">Elfmetersieger</span>
+                <span className="pen-label-short">i.E.</span>
+                <em>Pflicht</em>
+              </span>
+              <button
+                className={`pen-btn${penWinner === "home" ? " active" : ""}`}
+                onClick={() => handlePen("home")}
+              >
+                {match.home}
+              </button>
+              <button
+                className={`pen-btn${penWinner === "away" ? " active" : ""}`}
+                onClick={() => handlePen("away")}
+              >
+                {match.away}
+              </button>
             </div>
           )}
           {awayStats && (
@@ -2381,25 +2406,6 @@ function MatchCard({
         </div>
       )}
 
-      {isKoGroup && tipIsDraw && !locked && !hasResult && (
-        <div className="pen-row">
-          <span className="pen-label">
-            Elfmetersieger auswählen <em>Pflicht</em>
-          </span>
-          <button
-            className={`pen-btn${penWinner === "home" ? " active" : ""}`}
-            onClick={() => handlePen("home")}
-          >
-            {match.home}
-          </button>
-          <button
-            className={`pen-btn${penWinner === "away" ? " active" : ""}`}
-            onClick={() => handlePen("away")}
-          >
-            {match.away}
-          </button>
-        </div>
-      )}
       {isKoGroup && locked && tip && tipIsDraw && tip.penaltyWinner && (
         <div className="pen-locked">
           {tip.penaltyWinner === "home" ? match.home : match.away} i.E.
