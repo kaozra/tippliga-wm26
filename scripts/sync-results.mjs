@@ -469,6 +469,11 @@ export async function main() {
       console.warn(`[sync] skipped: ${error.message}`);
       return;
     }
+    if (process.env.ALLOW_SYNC_FAILURE === "true") {
+      console.warn(`::warning title=WM 2026 scheduled sync deferred::${message}`);
+      console.warn(`[sync] scheduled run deferred: ${error.message || error}`);
+      return;
+    }
     console.error(`::error title=WM 2026 result sync failed::${message}`);
     throw error;
   }

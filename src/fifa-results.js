@@ -144,10 +144,18 @@ export function validateFifaFeed(matches) {
 }
 
 export async function fetchFifaMatches({ fetchImpl = fetch } = {}) {
-  const response = await fetchImpl(FIFA_RESULTS_URL, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(15000),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let response;
+  try {
+    response = await fetchImpl(FIFA_RESULTS_URL, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!response.ok) throw new Error(`FIFA API antwortete mit HTTP ${response.status}`);
   const payload = await response.json();
   return validateFifaFeed(payload?.Results);
