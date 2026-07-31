@@ -1496,10 +1496,13 @@ function calcSonderPoints(sonderTip, sonderResults) {
 const ALL_SONDER = [...SONDER, ...SONDER_KO];
 
 function hasSonderValue(value) {
+  if (Array.isArray(value)) return value.some((v) => hasSonderValue(v));
   return value !== undefined && value !== null && String(value) !== "";
 }
 
 function sameSonderValue(a, b) {
+  if (Array.isArray(a)) return a.some((v) => sameSonderValue(v, b));
+  if (Array.isArray(b)) return b.some((v) => sameSonderValue(a, v));
   return String(a) === String(b);
 }
 
@@ -1548,6 +1551,151 @@ function calcSonderBreakdown(sonderTip = {}, sonderResults = {}) {
       items: [],
     },
   );
+}
+
+function addCount(map, key, amount = 1) {
+  if (!key) return;
+  map.set(key, (map.get(key) || 0) + amount);
+}
+
+function leadersFromMap(map) {
+  const entries = [...map.entries()].filter(([, value]) => value > 0);
+  const max = Math.max(0, ...entries.map(([, value]) => value));
+  return entries
+    .filter(([, value]) => value === max)
+    .map(([team]) => team)
+    .sort((a, b) => a.localeCompare(b, "de"));
+}
+
+function winnerForMatch(match, results) {
+  if (!match) return null;
+  const result = results?.[match.id];
+  if (!hasMatchScore(result)) return null;
+  const resolved = getResolvedMatch(match, results);
+  if (result.homeGoals > result.awayGoals) return resolved.home;
+  if (result.awayGoals > result.homeGoals) return resolved.away;
+  if (result.penaltyWinner === "home") return resolved.home;
+  if (result.penaltyWinner === "away") return resolved.away;
+  return null;
+}
+
+function loserForMatch(match, results) {
+  const winner = winnerForMatch(match, results);
+  if (!match || !winner) return null;
+  const resolved = getResolvedMatch(match, results);
+  return winner === resolved.home ? resolved.away : resolved.home;
+}
+
+function teamsForMatch(match, results) {
+  const resolved = getResolvedMatch(match, results);
+  return [resolved.home, resolved.away].filter((team) => TEAMS[team]);
+}
+
+function stageForTeam(team, results) {
+  if (winnerForMatch(MATCHES.find((m) => m.id === "FIN"), results) === team) {
+    return "Weltmeister";
+  }
+  if (loserForMatch(MATCHES.find((m) => m.id === "FIN"), results) === team) {
+    return "Finalist";
+  }
+  if (winnerForMatch(MATCHES.find((m) => m.id === "P3"), results) === team) {
+    return "Platz 3";
+  }
+  const rounds = [
+    ["SF", "Halbfinale"],
+    ["QF", "Viertelfinale"],
+    ["R16", "Achtelfinale"],
+    ["R32", "Sechzehntelfinale"],
+  ];
+  for (const [round, label] of rounds) {
+    if (
+      MATCHES.filter((m) => m.group === round).some((m) =>
+        teamsForMatch(m, results).includes(team),
+      )
+    ) {
+      return label;
+    }
+  }
+  return "Vorrunde";
+}
+
+function deriveSonderResults(results = {}, eventsByMatch = {}, playerStats = null) {
+  const allGoals = new Map();
+  const koGoals = new Map();
+  const koRedCards = new Map();
+
+  MATCHES.forEach((match) => {
+    const result = results[match.id];
+    if (!hasMatchScore(result)) return;
+    const [home, away] = teamsForMatch(match, results);
+    if (!home || !away) return;
+    addCount(allGoals, home, Number(result.homeGoals || 0));
+    addCount(allGoals, away, Number(result.awayGoals || 0));
+    if (KO_GROUPS.includes(match.group)) {
+      addCount(koGoals, home, Number(result.homeGoals || 0));
+      addCount(koGoals, away, Number(result.awayGoals || 0));
+      (eventsByMatch[match.id] || []).forEach((event) => {
+        if (
+          event.type === "Card" &&
+          String(event.detail || "").includes("Red")
+        ) {
+          addCount(koRedCards, event.team || event.scoringTeam);
+        }
+      });
+    }
+  });
+
+  const topScorers = playerStats?.topscorers || [];
+  const topScorerMax = Math.max(
+    0,
+    ...topScorers.map((player) => Number(player.goals || 0)),
+  );
+  const topScorerTeams =
+    topScorerMax > 0
+      ? [
+          ...new Set(
+            topScorers
+              .filter((player) => Number(player.goals || 0) === topScorerMax)
+              .map((player) => player.team)
+              .filter(Boolean),
+          ),
+        ].sort((a, b) => a.localeCompare(b, "de"))
+      : [];
+
+  const koShootouts = MATCHES.filter((match) => {
+    const result = results[match.id];
+    return (
+      KO_GROUPS.includes(match.group) &&
+      hasMatchScore(result) &&
+      result.homeGoals === result.awayGoals &&
+      hasSonderValue(result.penaltyWinner)
+    );
+  }).length;
+
+  const earlyExitTeams = Object.keys(TEAMS)
+    .filter((team) => TEAMS[team].strength >= 87)
+    .filter((team) =>
+      ["Vorrunde", "Sechzehntelfinale", "Achtelfinale"].includes(
+        stageForTeam(team, results),
+      ),
+    )
+    .sort((a, b) => a.localeCompare(b, "de"));
+
+  return {
+    weltmeister: [winnerForMatch(MATCHES.find((m) => m.id === "FIN"), results)]
+      .filter(Boolean),
+    finalist: [loserForMatch(MATCHES.find((m) => m.id === "FIN"), results)]
+      .filter(Boolean),
+    platz3: [winnerForMatch(MATCHES.find((m) => m.id === "P3"), results)]
+      .filter(Boolean),
+    topteam: topScorerTeams,
+    meistetore: leadersFromMap(allGoals),
+    fruehexit: earlyExitTeams,
+    schweiz_stage: [stageForTeam("Schweiz", results)].filter(Boolean),
+    ko_tore: leadersFromMap(koGoals),
+    ko_karten: leadersFromMap(koRedCards),
+    ko_elfmeter: [String(koShootouts)],
+  };
 }
 
 function hasPenaltyScore(result) {
@@ -4874,6 +5022,9 @@ function RanglisteTab({ uid, results }) {
   const [allTips, setAllTips] = useState([]);
   const [allSonderTips, setAllSonderTips] = useState([]);
   const [sonderResults, setSonderResults] = useState(null);
+  const [eventsByMatch, setEventsByMatch] = useState({});
+  const [playerStats, setPlayerStats] = useState(null);
+  const [showEffectiveSonder, setShowEffectiveSonder] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   useEffect(() => {
     const u1 = onSnapshot(collection(db, "users"), (snap) =>
@@ -4887,14 +5038,36 @@ function RanglisteTab({ uid, results }) {
     );
     const u4 = onSnapshot(doc(db, "results", "sonder"), (snap) => {
       if (snap.exists()) setSonderResults(snap.data());
+      else setSonderResults(null);
+    });
+    const u5 = onSnapshot(collection(db, "events"), (snap) => {
+      const next = {};
+      snap.docs.forEach((d) => {
+        next[d.id] = d.data().events || [];
+      });
+      setEventsByMatch(next);
+    });
+    const u6 = onSnapshot(doc(db, "playerstats", "wm2026"), (snap) => {
+      if (snap.exists()) setPlayerStats(snap.data());
+      else setPlayerStats(null);
     });
     return () => {
       u1();
       u2();
       u3();
       u4();
+      u5();
+      u6();
     };
   }, []);
+  const effectiveSonderResults = deriveSonderResults(
+    results,
+    eventsByMatch,
+    playerStats,
+  );
+  const activeSonderResults = showEffectiveSonder
+    ? effectiveSonderResults
+    : sonderResults;
   const board = users
     .map((u) => {
       const myTips = allTips.filter((t) => t.uid === u.uid);
@@ -4904,7 +5077,10 @@ function RanglisteTab({ uid, results }) {
         return s + (p || 0);
       }, 0);
       const mySonder = allSonderTips.find((s) => s.uid === u.uid) || {};
-      const sonderBreakdown = calcSonderBreakdown(mySonder, sonderResults);
+      const sonderBreakdown = calcSonderBreakdown(
+        mySonder,
+        activeSonderResults,
+      );
       const sonderPts = sonderBreakdown.points;
       return {
         ...u,
@@ -5013,7 +5189,7 @@ function RanglisteTab({ uid, results }) {
     return hasMatchScore(r);
   }).length;
   const evaluatedSonderCount = ALL_SONDER.filter((q) =>
-    hasSonderValue(sonderResults?.[q.id]),
+    hasSonderValue(activeSonderResults?.[q.id]),
   ).length;
 
   return (
@@ -5022,7 +5198,14 @@ function RanglisteTab({ uid, results }) {
       {board.length > 0 && (
         <>
           <div className="rl-head">
-            <span className="rl-title">Rangliste</span>
+            <div>
+              <span className="rl-title">Rangliste</span>
+              <span className="rl-mode-note">
+                {showEffectiveSonder
+                  ? "Effektiv inkl. Sondertipps"
+                  : "Offizielle Wertung"}
+              </span>
+            </div>
             <span className="rl-sub">
               {board.length} Spieler · {playedCount}{" "}
               {playedCount === 1 ? "Spiel" : "Spiele"}
@@ -5031,6 +5214,18 @@ function RanglisteTab({ uid, results }) {
               gewertet
             </span>
           </div>
+
+          <button
+            type="button"
+            className={`sonder-rank-toggle${showEffectiveSonder ? " active" : ""}`}
+            onClick={() => setShowEffectiveSonder((v) => !v)}
+          >
+            <span>
+              <Star size={14} strokeWidth={1.7} />
+              Effektiver Stand mit Sondertipps
+            </span>
+            <strong>{showEffectiveSonder ? "Ein" : "Aus"}</strong>
+          </button>
 
           {/* Podium 2-1-3 */}
           <div className="podium">
@@ -5053,6 +5248,9 @@ function RanglisteTab({ uid, results }) {
                     size={rank === 1 ? 60 : 46}
                   />
                   <div className="pod2-name">{u.displayName}</div>
+                  {showEffectiveSonder && u.sonderPts > 0 && (
+                    <div className="rank-sonder-bonus">+{u.sonderPts} Sonder</div>
+                  )}
                   <div className="pod2-pts">
                     {u.pts}
                     <span>Pkt</span>
@@ -5089,6 +5287,11 @@ function RanglisteTab({ uid, results }) {
                     <div className="rank-name">
                       {u.displayName}
                       {u.uid === uid && <span className="rank-you">DU</span>}
+                      {showEffectiveSonder && u.sonderPts > 0 && (
+                        <span className="rank-sonder-inline">
+                          +{u.sonderPts} Sonder
+                        </span>
+                      )}
                     </div>
                     <span className="rank-diff">
                       {diff > 0 ? `−${diff}` : ""}
@@ -5141,7 +5344,7 @@ function RanglisteTab({ uid, results }) {
           user={selectedUser}
           allTips={allTips}
           allSonderTips={allSonderTips}
-          sonderResults={sonderResults}
+          sonderResults={activeSonderResults}
           results={results}
           board={board}
           onClose={() => setSelectedUser(null)}
