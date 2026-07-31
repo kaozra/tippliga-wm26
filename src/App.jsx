@@ -1490,20 +1490,64 @@ const SONDER_KO = [
 ];
 
 function calcSonderPoints(sonderTip, sonderResults) {
-  if (!sonderResults || !sonderTip) return 0;
-  const p1 = SONDER.reduce((sum, q) => {
-    if (sonderTip[`${q.id}_late`]) return sum;
-    if (sonderResults[q.id] && sonderTip[q.id] === sonderResults[q.id])
-      return sum + q.pts;
-    return sum;
-  }, 0);
-  const p2 = SONDER_KO.reduce((sum, q) => {
-    if (sonderTip[`${q.id}_late`]) return sum;
-    if (sonderResults[q.id] && sonderTip[q.id] === sonderResults[q.id])
-      return sum + q.pts;
-    return sum;
-  }, 0);
-  return p1 + p2;
+  return calcSonderBreakdown(sonderTip, sonderResults).points;
+}
+
+const ALL_SONDER = [...SONDER, ...SONDER_KO];
+
+function hasSonderValue(value) {
+  return value !== undefined && value !== null && String(value) !== "";
+}
+
+function sameSonderValue(a, b) {
+  return String(a) === String(b);
+}
+
+function calcSonderBreakdown(sonderTip = {}, sonderResults = {}) {
+  return ALL_SONDER.reduce(
+    (acc, q) => {
+      const late = Boolean(sonderTip[`${q.id}_late`]);
+      const hasTip = hasSonderValue(sonderTip[q.id]);
+      const hasResult = hasSonderValue(sonderResults?.[q.id]);
+      const correct =
+        !late &&
+        hasTip &&
+        hasResult &&
+        sameSonderValue(sonderTip[q.id], sonderResults[q.id]);
+
+      if (hasTip) acc.tipped += 1;
+      if (hasResult) acc.evaluated += 1;
+      if (hasTip && hasResult && !late) {
+        acc.graded += 1;
+        acc.max += q.pts;
+      }
+      if (correct) {
+        acc.points += q.pts;
+        acc.correct += 1;
+      }
+
+      acc.items.push({
+        ...q,
+        tip: sonderTip[q.id],
+        result: sonderResults?.[q.id],
+        late,
+        hasTip,
+        hasResult,
+        correct,
+        points: correct ? q.pts : 0,
+      });
+      return acc;
+    },
+    {
+      points: 0,
+      max: 0,
+      tipped: 0,
+      evaluated: 0,
+      graded: 0,
+      correct: 0,
+      items: [],
+    },
+  );
 }
 
 function hasPenaltyScore(result) {
@@ -1530,6 +1574,28 @@ function ptsLabel(pts) {
   if (pts === 0) return <span className="pts-0">✗ 0 Pkt</span>;
   return null;
 }
+function SonderPointsSummary({ breakdown }) {
+  if (!breakdown || breakdown.tipped === 0) return null;
+  const hasEvaluatedTips = breakdown.max > 0;
+
+  return (
+    <div className="sonder-score-summary">
+      <div>
+        <span className="sonder-score-kicker">Sondertipps</span>
+        <strong>
+          {breakdown.points}
+          {hasEvaluatedTips && <small>/{breakdown.max}</small>} Pkt
+        </strong>
+      </div>
+      <span>
+        {hasEvaluatedTips
+          ? `${breakdown.correct}/${breakdown.graded} richtig gewertet`
+          : "Noch keine Sonder-Ergebnisse gewertet"}
+      </span>
+    </div>
+  );
+}
+
 function strengthColor(s) {
   if (s >= 87) return "#D4AF37";
   if (s >= 80) return "#4ade80";
@@ -4434,20 +4500,33 @@ function TabelleTab({ results, onTeamClick }) {
 }
 
 // ── USER STATS MODAL ──────────────────────────────────────────────────────────
-function UserStatsModal({ user, allTips, results, board, onClose }) {
+function UserStatsModal({
+  user,
+  allTips,
+  allSonderTips,
+  sonderResults,
+  results,
+  board,
+  onClose,
+}) {
   const myTips = allTips.filter((t) => t.uid === user.uid);
   const tippedPlayed = myTips.filter((t) => {
     const r = results[t.matchId];
     return hasMatchScore(r);
   });
-  const pts = tippedPlayed.reduce(
+  const matchPts = tippedPlayed.reduce(
     (s, t) => s + (calcPoints(t, results[t.matchId]) || 0),
     0,
   );
-  const maxPts = tippedPlayed.reduce(
+  const matchMaxPts = tippedPlayed.reduce(
     (sum, tip) => sum + maxPointsForResult(results[tip.matchId]),
     0,
   );
+  const mySonder = allSonderTips.find((s) => s.uid === user.uid) || {};
+  const sonderBreakdown =
+    user.sonderBreakdown || calcSonderBreakdown(mySonder, sonderResults);
+  const pts = matchPts + sonderBreakdown.points;
+  const maxPts = matchMaxPts + sonderBreakdown.max;
   const exact = tippedPlayed.filter(
     (t) => (calcPoints(t, results[t.matchId]) || 0) >= 5,
   ).length;
@@ -4532,6 +4611,8 @@ function UserStatsModal({ user, allTips, results, board, onClose }) {
             <div className="my-stat-lbl">Rang</div>
           </div>
         </div>
+
+        <SonderPointsSummary breakdown={sonderBreakdown} />
 
         <details className="th-legend-dropdown">
           <summary className="th-title">
@@ -4823,11 +4904,13 @@ function RanglisteTab({ uid, results }) {
         return s + (p || 0);
       }, 0);
       const mySonder = allSonderTips.find((s) => s.uid === u.uid) || {};
-      const sonderPts = calcSonderPoints(mySonder, sonderResults);
+      const sonderBreakdown = calcSonderBreakdown(mySonder, sonderResults);
+      const sonderPts = sonderBreakdown.points;
       return {
         ...u,
         pts: matchPts + sonderPts,
         sonderPts,
+        sonderBreakdown,
         tipCount: myTips.length,
       };
     })
@@ -4929,6 +5012,9 @@ function RanglisteTab({ uid, results }) {
     const r = results[m.id];
     return hasMatchScore(r);
   }).length;
+  const evaluatedSonderCount = ALL_SONDER.filter((q) =>
+    hasSonderValue(sonderResults?.[q.id]),
+  ).length;
 
   return (
     <div className="rangliste-wrap">
@@ -4939,7 +5025,10 @@ function RanglisteTab({ uid, results }) {
             <span className="rl-title">Rangliste</span>
             <span className="rl-sub">
               {board.length} Spieler · {playedCount}{" "}
-              {playedCount === 1 ? "Spiel" : "Spiele"} gewertet
+              {playedCount === 1 ? "Spiel" : "Spiele"}
+              {evaluatedSonderCount > 0 &&
+                ` + ${evaluatedSonderCount} Sonder`}{" "}
+              gewertet
             </span>
           </div>
 
@@ -5051,6 +5140,8 @@ function RanglisteTab({ uid, results }) {
         <UserStatsModal
           user={selectedUser}
           allTips={allTips}
+          allSonderTips={allSonderTips}
+          sonderResults={sonderResults}
           results={results}
           board={board}
           onClose={() => setSelectedUser(null)}
@@ -5072,6 +5163,8 @@ function ProfilTab({ user, profile, results, onProfileUpdate }) {
   const [myTips, setMyTips] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [allTips, setAllTips] = useState([]);
+  const [allSonderTips, setAllSonderTips] = useState([]);
+  const [sonderResults, setSonderResults] = useState(null);
   useEffect(() => {
     setName(profile?.displayName || "");
   }, [profile]);
@@ -5084,9 +5177,18 @@ function ProfilTab({ user, profile, results, onProfileUpdate }) {
     const u2 = onSnapshot(collection(db, "users"), (snap) =>
       setAllUsers(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))),
     );
+    const u3 = onSnapshot(collection(db, "sondertips"), (snap) =>
+      setAllSonderTips(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))),
+    );
+    const u4 = onSnapshot(doc(db, "results", "sonder"), (snap) => {
+      if (snap.exists()) setSonderResults(snap.data());
+      else setSonderResults(null);
+    });
     return () => {
       u1();
       u2();
+      u3();
+      u4();
     };
   }, [user.uid]);
 
@@ -5098,14 +5200,18 @@ function ProfilTab({ user, profile, results, onProfileUpdate }) {
     const r = results[t.matchId];
     return hasMatchScore(r);
   });
-  const pts = tippedPlayed.reduce(
+  const matchPts = tippedPlayed.reduce(
     (s, t) => s + (calcPoints(t, results[t.matchId]) || 0),
     0,
   );
-  const maxPts = tippedPlayed.reduce(
+  const matchMaxPts = tippedPlayed.reduce(
     (sum, tip) => sum + maxPointsForResult(results[tip.matchId]),
     0,
   );
+  const mySonder = allSonderTips.find((s) => s.uid === user.uid) || {};
+  const sonderBreakdown = calcSonderBreakdown(mySonder, sonderResults);
+  const pts = matchPts + sonderBreakdown.points;
+  const maxPts = matchMaxPts + sonderBreakdown.max;
   const exact = tippedPlayed.filter(
     (t) => (calcPoints(t, results[t.matchId]) || 0) >= 5,
   ).length;
@@ -5139,13 +5245,15 @@ function ProfilTab({ user, profile, results, onProfileUpdate }) {
 
   const board = allUsers
     .map((u) => {
-      const p = allTips
+      const matchPoints = allTips
         .filter((t) => t.uid === u.uid)
         .reduce((s, t) => {
           const r = results[t.matchId];
           return s + (r ? calcPoints(t, r) || 0 : 0);
         }, 0);
-      return { uid: u.uid, pts: p };
+      const userSonder = allSonderTips.find((s) => s.uid === u.uid) || {};
+      const sonderPoints = calcSonderPoints(userSonder, sonderResults);
+      return { uid: u.uid, pts: matchPoints + sonderPoints };
     })
     .sort((a, b) => b.pts - a.pts);
   const rank = board.findIndex((u) => u.uid === user.uid) + 1;
@@ -5222,6 +5330,7 @@ function ProfilTab({ user, profile, results, onProfileUpdate }) {
               <div className="my-stat-lbl">Rang</div>
             </div>
           </div>
+          <SonderPointsSummary breakdown={sonderBreakdown} />
         </div>
       </div>
       <div className="profile-section">

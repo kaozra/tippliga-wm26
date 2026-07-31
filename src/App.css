@@ -1879,6 +1879,48 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+.sonder-score-summary {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.13),
+    rgba(139, 92, 246, 0.08)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text);
+}
+.sonder-score-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sonder-score-kicker {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.sonder-score-summary strong {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 24px;
+  color: var(--gold);
+  line-height: 1;
+}
+.sonder-score-summary small {
+  font-size: 14px;
+  color: var(--muted);
+}
+.sonder-score-summary > span {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-align: right;
+}
 /* Tipp-Verlauf im User-Modal */
 .th-title {
   display: flex;
